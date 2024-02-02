@@ -1,5 +1,6 @@
 #include "debugger.h"
 #include "cpu.h"
+#include "printf.c"
 
 int fact(int n)
 {
@@ -15,6 +16,7 @@ void kernel_start(void)
 	int i;
 //	call_debugger();
 
+	printf("test\ntoto");
 	i = 10;
 
 	i = fact(i);
