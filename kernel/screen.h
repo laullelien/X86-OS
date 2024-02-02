@@ -6,7 +6,7 @@
 #define COLONS 80
 #define LINES 25
 
-#define LINE_START 1
+#define LINE_START 0
 
 #define CUSOR_COMMAND_PORT 0x3D4
 #define CUSOR_DATA_PORT 0x3D5
