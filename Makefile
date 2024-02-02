@@ -6,9 +6,6 @@ QEMU = /usr/bin/qemu-system-i386
 ### QEMU opt
 QEMUOPTSRUN = -machine q35 -m 256 -kernel kernel/kernel.bin
 
-# noyau
-KERNEL = kernel/kernel.bin
-
 # Output directory for each submakefiles
 OUTPUT := out
 export OUTPUT
@@ -35,5 +32,5 @@ clean:
 	$(MAKE) clean -C kernel/
 	$(MAKE) clean -C user/
 
-run: $(KERNEL)
+run: all
 	$(QEMU) $(QEMUOPTSRUN)
