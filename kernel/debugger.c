@@ -4,6 +4,7 @@
 #include "gdb_serial_support.h"
 #include "cpu.h"
 #include "string.h"
+#include "printf.c"
 
 static int do_debug = 0;
 
@@ -240,4 +241,15 @@ void trap_handler(unsigned trapno, unsigned error_code)
 			}
 		}
 	}
+}
+
+
+
+void *check_pointer(void *pointer) {
+	if (pointer == NULL) {
+		printf("\nNULL POINTER\n");
+		hlt();
+	}
+
+	return pointer;
 }
