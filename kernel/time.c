@@ -1,10 +1,11 @@
 #include "time.h"
-#include <stdbool.h>
-#include <stdint.h>
+#include "stdbool.h"
+#include "stdint.h"
 #include "segment.h"
-#include <stdio.h>
+#include "stdio.h"
 #include "cpu.h"
 #include "screen.h"
+#include "process.h"
 
 
 uint32_t Sec=0;
@@ -41,6 +42,7 @@ void tic_PIT(void){
     }
     sprintf(buffer,"%02i:%02i:%02i",H,M,S);
     print_time(buffer,8);
+    ordonnance();
 }
 
 

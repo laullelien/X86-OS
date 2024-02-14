@@ -33,8 +33,11 @@ int idle(void *) {
 }
 
 int proc1(void *param) {
+	int i=1;
 	for(;;) {
-		printf("proc: %p\n", param);
+		printf("%i proc: %p\n", i, param);
+		i ++;
+		
 		sti();
         hlt();
         cli();
@@ -56,8 +59,8 @@ void kernel_start(void)
 
 	printf("test\n%i    toto", i);
 
-	start(idle, 64, 1, "idle", NULL); // TODO maybe 0
-	start(proc1, 64, 1, "proc1", (void*)(1235));
+	start(idle, 128, 1, "idle", NULL); // TODO maybe 0
+	start(proc1, 1024, 1, "proc1", (void*)(1235));
 
 	idle(NULL);
 

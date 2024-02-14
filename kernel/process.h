@@ -33,6 +33,8 @@ typedef struct _Process{
 
 extern void ctx_sw(void *, void *);
 
+void ordonnance();
+
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg);
 
 

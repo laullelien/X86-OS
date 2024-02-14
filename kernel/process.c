@@ -21,9 +21,12 @@ void ordonnance() {
     }
     Process *old_process = CURRENT_PROCESS;
     old_process->state = ACTIVABLE;
-    queue_add(old_process, &ACTIVABLE_LIST, Process, listfield, priority);
+    
     
     Process *new_process = queue_out(&ACTIVABLE_LIST, Process, listfield);
+
+    queue_add(old_process, &ACTIVABLE_LIST, Process, listfield, priority);
+    
     new_process->state = ACTIVE;
     CURRENT_PROCESS = new_process;
 
