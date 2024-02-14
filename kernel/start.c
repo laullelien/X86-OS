@@ -1,6 +1,10 @@
 #include "debugger.h"
 #include "cpu.h"
 #include "printf.c"
+#include "stdbool.h"
+#include "time.h"
+#include "screen.h"
+#include "start.h"
 #include "process.h"
 #include "stddef.h"
 
@@ -10,6 +14,12 @@ int fact(int n)
 		return 1;
 
 	return n * fact(n-1);
+}
+
+void init_clock(void){
+	init_traitant_IT(32,traitant_IT_32);
+    set_freq(50);
+    mask_IRQ(0,0);
 }
 
 
@@ -33,9 +43,12 @@ int proc1(void *param) {
 
 void kernel_start(void)
 {
+	init_clock();	
+	efface_ecran();
+	
 	int i;
 //	call_debugger();
-
+	
 	printf("test\ntoto");
 	i = 10;
 
