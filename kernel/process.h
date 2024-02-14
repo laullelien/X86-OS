@@ -2,6 +2,7 @@
 #define __PROCESS_H_INCLUDED__
 
 #include "stdint.h"
+#include "queue.h"
 
 #define NBPROC 30   // Nombre de processus max
 
@@ -9,7 +10,7 @@
 
 enum PROCESS_STATE {
     ACTIVE,
-    ACVTIVABLE,
+    ACTIVABLE,
     PRECEIVE,
     WAIT, 
     WAIT_IO,
@@ -26,6 +27,8 @@ typedef struct _Process{
     uint32_t *stack;
     int priority;
 
+    link listfield;
+
 } Process;
 
 extern void ctx_sw(void *, void *);
@@ -36,12 +39,16 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
 /*
  TODO
     start : crée un processus dans l'état activable.
+    getpid : récupére l'identifiant du processus actif.
+    getprio : lit la priorité d'un processus.
+    chprio : modifie la priorité d'un processus.
+
     exit : termine le processus actif (ie. soi-même).
     kill : met fin à un processus.
     waitpid : attend la terminaison d'un processus fils et récupère sa valeur de retour.
-    getprio : lit la priorité d'un processus.
-    chprio : modifie la priorité d'un processus.
-    getpid : récupére l'identifiant du processus actif.
+    
+    
+    
 
 */
 
