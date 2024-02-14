@@ -1,10 +1,12 @@
 #include "debugger.h"
 #include "cpu.h"
 #include "printf.c"
-#include <stdbool.h>
+#include "stdbool.h"
 #include "time.h"
 #include "screen.h"
 #include "start.h"
+#include "process.h"
+#include "stddef.h"
 
 int fact(int n)
 {
@@ -21,6 +23,24 @@ void init_clock(void){
 }
 
 
+int idle(void *) {
+    for(;;) {
+		printf("idle\n");
+        sti();
+        hlt();
+        cli();
+    }
+}
+
+int proc1(void *param) {
+	for(;;) {
+		printf("proc: %p\n", param);
+		sti();
+        hlt();
+        cli();
+	}
+}
+
 void kernel_start(void)
 {
 	init_clock();	
@@ -33,7 +53,14 @@ void kernel_start(void)
 	i = 10;
 
 	i = fact(i);
-	sti();
+
+	printf("test\n%i    toto", i);
+
+	start(idle, 64, 1, "idle", NULL); // TODO maybe 0
+	start(proc1, 64, 1, "proc1", (void*)(1235));
+
+	idle(NULL);
+
 	while(1)
 	  hlt();
 

@@ -5,6 +5,7 @@
 #include "cpu.h"
 #include "string.h"
 
+
 static int do_debug = 0;
 
 static void debugger(unsigned trapno, unsigned error_code, struct x86_tss *t)
@@ -240,4 +241,15 @@ void trap_handler(unsigned trapno, unsigned error_code)
 			}
 		}
 	}
+}
+
+
+
+void *check_pointer(void *pointer) {
+	if (pointer == NULL) {
+		//printf("\nNULL POINTER\n");
+		hlt();
+	}
+
+	return pointer;
 }
