@@ -25,4 +25,6 @@
 
 #define call_debugger() do { __asm__ __volatile__("int $3"); } while (0)
 
+void *check_pointer(void *pointer);
+
 #endif
