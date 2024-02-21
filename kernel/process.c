@@ -29,7 +29,8 @@ static void mark_process_killed(Process *process) {
     }
 
     queue_add(process, &KILLED_LIST, Process, listfield, priority);
-    
+}
+
 Process * getprocess(int pid){
     if (pid >=0 && pid < NBPROC)
         return PROCESS_TABLE[pid];
@@ -214,8 +215,8 @@ int chprio(int pid, int newprio){
     if (newprio != oldprio){
         process->priority = newprio;
         if (process->state == ACTIVABLE){
-            remove_from_list(process);
-            re_add_list(process);
+            queue_del(process, listfield);
+            queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
         }
     }
     return oldprio;
