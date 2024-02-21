@@ -16,7 +16,8 @@ enum PROCESS_STATE {
     WAIT_IO,
     WAIT_CHILD,
     SLEEP,
-    ZOMBIE
+    ZOMBIE,
+    KILLED
 };
 
 typedef struct _Process{
@@ -26,7 +27,13 @@ typedef struct _Process{
     uint32_t context[5];
     uint32_t *stack;
     int priority;
+    
+    struct _Process *parent;
 
+    link children_list;
+    link brothers_listfield;
+
+    int return_value;
     link listfield;
 
 } Process;
@@ -38,19 +45,17 @@ void ordonnance();
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg);
 
 
+int kill(int pid);
+void exit(int retval);
+int waitpid(int pid, int *retvalp);
+
 /*
  TODO
-    start : crée un processus dans l'état activable.
+    
     getpid : récupére l'identifiant du processus actif.
     getprio : lit la priorité d'un processus.
     chprio : modifie la priorité d'un processus.
 
-    exit : termine le processus actif (ie. soi-même).
-    kill : met fin à un processus.
-    waitpid : attend la terminaison d'un processus fils et récupère sa valeur de retour.
-    
-    
-    
 
 */
 

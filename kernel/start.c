@@ -37,6 +37,12 @@ int proc1(void *param) {
 	for(;;) {
 		printf("%i proc: %p\n", i, param);
 		i ++;
+		if (i == 5) {
+			start(proc1, 1024, 1, "proc2", (void*)(12435));
+		}
+		if (i >= 10) {
+			exit(0);
+		}
 		
 		sti();
         hlt();
@@ -59,7 +65,7 @@ void kernel_start(void)
 
 	printf("test\n%i    toto", i);
 
-	start(idle, 128, 1, "idle", NULL); // TODO maybe 0
+	start(idle, 1024, 1, "idle", NULL); // TODO maybe 0
 	start(proc1, 1024, 1, "proc1", (void*)(1235));
 
 	idle(NULL);

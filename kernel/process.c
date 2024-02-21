@@ -10,22 +10,42 @@ static int NEXT_PID = 0;
 
 static Process *PROCESS_TABLE[NBPROC];
 
-static Process *CURRENT_PROCESS;
+static Process *CURRENT_PROCESS = NULL;
 
 static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 
+static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
+
+
+static void mark_process_killed(Process *process) {
+
+    process->state = KILLED;
+    if (process->parent != NULL) {
+        queue_del(process, brothers_listfield);
+    }
+
+    if (process->listfield.prev != 0 || process->listfield.next != 0) {
+        queue_del(process, listfield);
+    }
+
+    queue_add(process, &KILLED_LIST, Process, listfield, priority);
+}
 
 void ordonnance() {
     if (queue_empty(&ACTIVABLE_LIST)) {
         return;
     }
     Process *old_process = CURRENT_PROCESS;
-    old_process->state = ACTIVABLE;
+    if (old_process->state == ACTIVE) {
+        old_process->state = ACTIVABLE;
+        queue_add(old_process, &ACTIVABLE_LIST, Process, listfield, priority);
+    }
     
-    
-    Process *new_process = queue_out(&ACTIVABLE_LIST, Process, listfield);
-
-    queue_add(old_process, &ACTIVABLE_LIST, Process, listfield, priority);
+    Process *new_process = queue_out(&ACTIVABLE_LIST, Process, listfield);    
+    if (new_process == old_process) {
+        CURRENT_PROCESS->state = ACTIVE;
+        return;
+    }
     
     new_process->state = ACTIVE;
     CURRENT_PROCESS = new_process;
@@ -36,7 +56,7 @@ void ordonnance() {
 
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg) {
     Process *process = check_pointer(mem_alloc(sizeof(Process)));
-    
+    // TODO get from KILLED_LIST
     process->pid = NEXT_PID;
     PROCESS_TABLE[process->pid] = process;
     NEXT_PID += 1;
@@ -45,25 +65,127 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     strncpy(process->name, name, PROCESS_NAME_LEN);
 
     process->priority = prio;
+
     if (process->pid == 0) {
         process->state = ACTIVE;
         CURRENT_PROCESS = process;
     } else {
         process->state = ACTIVABLE; // TODO peut être active si prio > au courant?
         queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
-        // TODO add to activable list
+        
     }
 
     unsigned long stack_size = ssize + 3;
-    process->stack = check_pointer(mem_alloc(stack_size*sizeof(uint32_t)));
+    process->stack = check_pointer(mem_alloc(stack_size*sizeof(uint32_t))); // Do not realloc when reusing old process
     
     process->stack[stack_size-1] = (uint32_t) arg;
 
-    // TODO process->stack[stack_size-2] = exit;
+    process->stack[stack_size-2] = (uint32_t) exit;
 
     process->stack[stack_size-3] = (uint32_t) pt_func;
     process->context[1] = (uint32_t) &(process->stack[stack_size-3]);
+
+    if (CURRENT_PROCESS == NULL || CURRENT_PROCESS->pid == 0) {
+        process->parent = NULL;
+    } else {
+        process->parent = CURRENT_PROCESS;
+    }
+    
+    process->return_value = 0;
+    process->children_list.next = &(process->children_list);
+    process->children_list.prev = &(process->children_list);
+
     return process->pid;
 }
 
 
+static void terminate_process(Process *process) {
+    if (process->parent == NULL) {
+        mark_process_killed(process);
+        
+    } else {
+        process->state = ZOMBIE;
+        if (process->parent->state == WAIT_CHILD) {
+            process->parent->state = ACTIVABLE;
+            queue_add(process->parent, &ACTIVABLE_LIST, Process, listfield, priority);
+        }
+    }
+
+    Process *child_process;
+
+    queue_for_each(child_process, &(process->children_list), Process, brothers_listfield) {
+        child_process->parent = NULL;
+        if (child_process->state == ZOMBIE) {
+            mark_process_killed(child_process);
+        }
+    }
+}
+
+
+int kill(int pid) {
+    // TODO check process is not killed
+    if (pid <= 0 || pid >= NBPROC) {
+        return -1;
+    }
+    if (PROCESS_TABLE[pid] == NULL) {
+        return -2;
+    }
+
+    terminate_process(PROCESS_TABLE[pid]);
+    PROCESS_TABLE[pid]->return_value = 0;
+    ordonnance();
+    return 0;
+}
+
+void exit(int retval) {
+    assert(CURRENT_PROCESS->pid != 0);
+    
+    terminate_process(CURRENT_PROCESS);
+    CURRENT_PROCESS->return_value = retval;
+    ordonnance();
+    while (1);
+}
+
+int waitpid(int pid, int *retvalp) {
+    if (pid >= 0) {
+        if (pid < 0 || pid >= NBPROC) {
+            return -1;
+        }
+
+        if (PROCESS_TABLE[pid] == NULL || PROCESS_TABLE[pid]->state == KILLED) {
+            return -2;
+        }
+
+        if (PROCESS_TABLE[pid]->parent != CURRENT_PROCESS) {
+            return -3;
+        }
+
+        while (PROCESS_TABLE[pid]->state != ZOMBIE) {
+            CURRENT_PROCESS->state = WAIT_CHILD;
+            ordonnance();
+        }
+
+    } else {
+        if (queue_empty(&CURRENT_PROCESS->children_list)) {
+            return -1;
+        }
+
+        while (pid < 0) {
+            // TODO make another list for ended processes
+            Process *child_process;
+            queue_for_each(child_process, &(CURRENT_PROCESS->children_list), Process, brothers_listfield) {
+                if (child_process->state == ZOMBIE) {
+                    pid = child_process->pid;
+                    break;
+                }
+            }
+            ordonnance();
+        }
+    }
+
+    if (retvalp != NULL) {
+        *retvalp = PROCESS_TABLE[pid]->return_value;
+    }
+    mark_process_killed(PROCESS_TABLE[pid]);
+    return pid;
+}
