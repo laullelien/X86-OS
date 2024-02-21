@@ -33,10 +33,17 @@ typedef struct _Process{
 
 extern void ctx_sw(void *, void *);
 
+Process * getprocess(int pid);
+
 void ordonnance();
 
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg);
 
+int getpid(void);
+
+int getprio(int pid);
+
+int chprio(int pid, int newprio);
 
 /*
  TODO

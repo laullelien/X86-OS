@@ -14,6 +14,11 @@ static Process *CURRENT_PROCESS;
 
 static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 
+Process * getprocess(int pid){
+    if (pid >=0 && pid < NBPROC)
+        return PROCESS_TABLE[pid];
+    return NULL;
+}
 
 void ordonnance() {
     if (queue_empty(&ACTIVABLE_LIST)) {
@@ -66,4 +71,38 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     return process->pid;
 }
 
+int getpid(void){
+    return CURRENT_PROCESS->pid;
+}
 
+int getprio(int pid){
+    Process * process = getprocess(pid);
+    if (process == NULL)
+        return -1;
+
+    return process->priority;
+}
+
+void re_add_list(Process * process){
+    switch (process->state){
+        case ACTIVABLE:
+            queue_del(process, listfield);
+            queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
+            break;
+        default:
+            break;
+    }
+}
+
+int chprio(int pid, int newprio){
+    Process * process = getprocess(pid);
+    if (process == NULL)
+        return -1;
+
+    int oldprio = process->priority;
+    if (newprio != oldprio){
+        process->priority = newprio;
+        re_add_list(process);
+    }
+    return oldprio;
+}
