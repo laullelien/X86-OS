@@ -70,9 +70,11 @@ void set_freq(int freq){
 }
 
 void mask_IRQ(uint32_t num_IRQ, bool maskPar){
-    uint8_t tab = inb(0x21);
-    uint8_t mask = maskPar;
-    mask=mask<<num_IRQ;
-    tab=tab&mask;
-    outb(tab,0x21);
+    uint8_t mask =  inb(0x21);
+    if (maskPar) {
+        mask |= (1 << num_IRQ);
+    } else {
+        mask &= ~(1 << num_IRQ);
+    }
+    outb(mask, 0x21);
 }

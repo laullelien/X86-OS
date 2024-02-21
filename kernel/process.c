@@ -29,6 +29,11 @@ static void mark_process_killed(Process *process) {
     }
 
     queue_add(process, &KILLED_LIST, Process, listfield, priority);
+    
+Process * getprocess(int pid){
+    if (pid >=0 && pid < NBPROC)
+        return PROCESS_TABLE[pid];
+    return NULL;
 }
 
 void ordonnance() {
@@ -98,6 +103,9 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     return process->pid;
 }
 
+int getpid(void){
+    return CURRENT_PROCESS->pid;
+}
 
 static void terminate_process(Process *process) {
     if (process->parent == NULL) {
@@ -188,4 +196,27 @@ int waitpid(int pid, int *retvalp) {
     }
     mark_process_killed(PROCESS_TABLE[pid]);
     return pid;
+}
+int getprio(int pid){
+    Process * process = getprocess(pid);
+    if (process == NULL)
+        return -1;
+
+    return process->priority;
+}
+
+int chprio(int pid, int newprio){
+    Process * process = getprocess(pid);
+    if (process == NULL)
+        return -1;
+
+    int oldprio = process->priority;
+    if (newprio != oldprio){
+        process->priority = newprio;
+        if (process->state == ACTIVABLE){
+            remove_from_list(process);
+            re_add_list(process);
+        }
+    }
+    return oldprio;
 }
