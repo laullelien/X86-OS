@@ -86,8 +86,17 @@ int getprio(int pid){
 void re_add_list(Process * process){
     switch (process->state){
         case ACTIVABLE:
-            queue_del(process, listfield);
             queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
+            break;
+        default:
+            break;
+    }
+}
+
+void remove_from_list(Process * process){
+    switch (process->state){
+        case ACTIVABLE:
+            queue_del(process, listfield);
             break;
         default:
             break;
@@ -101,6 +110,7 @@ int chprio(int pid, int newprio){
 
     int oldprio = process->priority;
     if (newprio != oldprio){
+        remove_from_list(process);
         process->priority = newprio;
         re_add_list(process);
     }
