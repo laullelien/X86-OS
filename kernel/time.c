@@ -8,9 +8,15 @@
 #include "process.h"
 
 
-uint32_t Sec=0;
+#define CLOCK_FREQ 50
 
-void print_time(char *str_time,uint32_t len){
+uint32_t Sec=0;
+static int nb_tic=0;
+
+
+
+
+static void print_time(char *str_time,uint32_t len){
     uint32_t col=79-len;
     uint32_t lig=0;
     for (uint32_t i=0; i<len; i++){
@@ -22,15 +28,15 @@ void print_time(char *str_time,uint32_t len){
 
 void tic_PIT(void){
     outb(0x20,0x20);
-    static int S=0;
-    static int M=0;
-    static int H=0;
-    static int nb_tic=0;
+
     char buffer[50];
-    if (nb_tic<49){
+    if (nb_tic<CLOCK_FREQ){
         nb_tic++;
     }
     else {
+        int S=0;
+        int M=0;
+        int H=0;
         nb_tic=0;
         Sec++;
 
@@ -39,14 +45,16 @@ void tic_PIT(void){
 	    M = (Sec -(3600*H))/60;
 	
 	    S = (Sec -(3600*H)-(M*60));
+        
+        sprintf(buffer,"%02i:%02i:%02i",H,M,S);
+        print_time(buffer,8);
+        
     }
-    sprintf(buffer,"%02i:%02i:%02i",H,M,S);
-    print_time(buffer,8);
-    ordonnance();
+    
 }
 
 
-void init_traitant_IT(uint32_t num_IT, void (*traitant)(void)){
+static void init_traitant_IT(uint32_t num_IT, void (*traitant)(void)){
     uint32_t M1;
     uint32_t M2;
     uint32_t adr=0x1000+(8*num_IT);
@@ -60,7 +68,7 @@ void init_traitant_IT(uint32_t num_IT, void (*traitant)(void)){
     *ptr=M2;
 }
 
-void set_freq(int freq){
+static void set_freq(int freq){
     uint32_t QUARTZ=0x1234DD;
     uint16_t val_reg=QUARTZ/freq;
 
@@ -69,7 +77,7 @@ void set_freq(int freq){
     outb((val_reg>>8), 0x40);
 }
 
-void mask_IRQ(uint32_t num_IRQ, bool maskPar){
+static void mask_IRQ(uint32_t num_IRQ, bool maskPar){
     uint8_t mask =  inb(0x21);
     if (maskPar) {
         mask |= (1 << num_IRQ);
@@ -77,4 +85,10 @@ void mask_IRQ(uint32_t num_IRQ, bool maskPar){
         mask &= ~(1 << num_IRQ);
     }
     outb(mask, 0x21);
+}
+
+void init_clock(void){
+	init_traitant_IT(32, traitant_IT_32);
+    set_freq(CLOCK_FREQ);
+    mask_IRQ(0,0);
 }

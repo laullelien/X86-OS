@@ -6,6 +6,8 @@
 #include "cpu.h"
 #include "queue.h"
 
+extern void exit_asm();
+
 static int NEXT_PID = 0;
 
 static Process *PROCESS_TABLE[NBPROC];
@@ -20,6 +22,7 @@ static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
 static void mark_process_killed(Process *process) {
 
     process->state = KILLED;
+    process->priority = 1;
     if (process->parent != NULL) {
         queue_del(process, brothers_listfield);
     }
@@ -61,13 +64,22 @@ void ordonnance() {
 }
 
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg) {
-    Process *process = check_pointer(mem_alloc(sizeof(Process)));
-    // TODO get from KILLED_LIST
-    process->pid = NEXT_PID;
-    PROCESS_TABLE[process->pid] = process;
-    NEXT_PID += 1;
-
-    // TODO erreur si plus de pid dispo
+    Process *process;
+    
+    if (NEXT_PID >= NBPROC) {
+        if (queue_empty(&KILLED_LIST)) {
+            return -1;
+        } else {
+            process = queue_out(&KILLED_LIST, Process, listfield);
+            mem_free(process->stack, process->stack_size); // TODO do this in mark_process_killed
+        }
+    } else {
+        process = check_pointer(mem_alloc(sizeof(Process)));
+        process->pid = NEXT_PID;
+        PROCESS_TABLE[process->pid] = process;
+        NEXT_PID += 1;
+    }
+    
     strncpy(process->name, name, PROCESS_NAME_LEN);
 
     process->priority = prio;
@@ -82,11 +94,12 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     }
 
     unsigned long stack_size = ssize + 3;
+    process->stack_size = stack_size*sizeof(uint32_t);
     process->stack = check_pointer(mem_alloc(stack_size*sizeof(uint32_t))); // Do not realloc when reusing old process
     
     process->stack[stack_size-1] = (uint32_t) arg;
 
-    process->stack[stack_size-2] = (uint32_t) exit;
+    process->stack[stack_size-2] = (uint32_t) exit_asm;
 
     process->stack[stack_size-3] = (uint32_t) pt_func;
     process->context[1] = (uint32_t) &(process->stack[stack_size-3]);
@@ -95,6 +108,7 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
         process->parent = NULL;
     } else {
         process->parent = CURRENT_PROCESS;
+        queue_add(process, &(CURRENT_PROCESS->children_list), Process, brothers_listfield, priority);
     }
     
     process->return_value = 0;
@@ -132,14 +146,15 @@ static void terminate_process(Process *process) {
 
 
 int kill(int pid) {
-    // TODO check process is not killed
     if (pid <= 0 || pid >= NBPROC) {
         return -1;
     }
     if (PROCESS_TABLE[pid] == NULL) {
         return -2;
     }
-
+    if (PROCESS_TABLE[pid]->state == KILLED) {
+        return -3;
+    }
     terminate_process(PROCESS_TABLE[pid]);
     PROCESS_TABLE[pid]->return_value = 0;
     ordonnance();
@@ -148,9 +163,10 @@ int kill(int pid) {
 
 void exit(int retval) {
     assert(CURRENT_PROCESS->pid != 0);
-    
+
     terminate_process(CURRENT_PROCESS);
     CURRENT_PROCESS->return_value = retval;
+    
     ordonnance();
     while (1);
 }
@@ -176,7 +192,7 @@ int waitpid(int pid, int *retvalp) {
 
     } else {
         if (queue_empty(&CURRENT_PROCESS->children_list)) {
-            return -1;
+            return -4;
         }
 
         while (pid < 0) {

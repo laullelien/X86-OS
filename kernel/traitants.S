@@ -15,7 +15,7 @@ traitant_IT_32:
     popl %edx
     popl %eax
 # appel ordonnance
-    # call ordonnance
+    call ordonnance
 # fin du traitant
     iret
 

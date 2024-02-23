@@ -16,12 +16,6 @@ int fact(int n)
 	return n * fact(n-1);
 }
 
-void init_clock(void){
-	init_traitant_IT(32,traitant_IT_32);
-    set_freq(50);
-    mask_IRQ(0,0);
-}
-
 
 int idle(void *) {
     for(;;) {
@@ -32,21 +26,41 @@ int idle(void *) {
     }
 }
 
+int proc2(void *param){
+	param=param;
+	for (int i=0;i<5;i++){
+		printf("proc2\n");
+		sti();
+        hlt();
+        cli();
+	}
+
+	return 987;
+}
+
 int proc1(void *param) {
 	int i=1;
 	for(;;) {
-		printf("%i proc: %p\n", i, param);
+		printf("%i proc: %p    %i\n", i, param, getpid());
 		i ++;
-		if (i == 5) {
-			start(proc1, 1024, 1, "proc2", (void*)(12435));
+		if (i % 5 == 0) {
+			
+			int ptr=0;
+			int pid = start(proc2, 1024, 0, "proc2", (void*)(12435));
+			printf("ret %i, pid %i\n", ptr, pid);
+			pid = kill(pid);
+			waitpid(-1, NULL);
+			
+			//pid = waitpid(pid, &ptr);
+			printf("ret %i, pid %i\n", ptr, pid);
+			i = 1;
 		}
-		if (i >= 10) {
-			exit(0);
-		}
+		
 		
 		sti();
         hlt();
         cli();
+		
 	}
 }
 
@@ -65,7 +79,7 @@ void kernel_start(void)
 
 	printf("test\n%i    toto", i);
 
-	start(idle, 1024, 1, "idle", NULL); // TODO maybe 0
+	start(idle, 1024, 0, "idle", NULL);
 	start(proc1, 1024, 1, "proc1", (void*)(1235));
 
 	idle(NULL);

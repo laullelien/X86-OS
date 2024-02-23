@@ -26,6 +26,7 @@ typedef struct _Process{
     enum PROCESS_STATE state;
     uint32_t context[5];
     uint32_t *stack;
+    unsigned long stack_size;
     int priority;
     
     struct _Process *parent;
@@ -55,16 +56,6 @@ int chprio(int pid, int newprio);
 int kill(int pid);
 void exit(int retval);
 int waitpid(int pid, int *retvalp);
-
-/*
- TODO
-    
-    getpid : récupére l'identifiant du processus actif.
-    getprio : lit la priorité d'un processus.
-    chprio : modifie la priorité d'un processus.
-
-
-*/
 
 
 #endif /* __PROCESS_H_INCLUDED__ */
