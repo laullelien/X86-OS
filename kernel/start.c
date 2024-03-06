@@ -8,6 +8,9 @@
 #include "process.h"
 #include "stddef.h"
 
+
+
+
 int fact(int n)
 {
 	if (n < 2)
@@ -19,7 +22,7 @@ int fact(int n)
 
 int idle(void *) {
     for(;;) {
-		printf("idle\n");
+        //printf("idle\n");
         sti();
         hlt();
         cli();
@@ -64,28 +67,173 @@ int proc1(void *param) {
 	}
 }
 
+//Test 0
+
+int test0(void *arg)
+{
+        (void)arg;
+        register unsigned reg1 = 1u;
+        register unsigned reg2 = 0xFFFFFFFFu;
+        register unsigned reg3 = 0xBADB00B5u;
+        register unsigned reg4 = 0xDEADBEEFu;
+
+
+        printf("I'm a simple process running ...");
+
+        unsigned i;
+        for (i = 0; i < 10000000; i++) {
+             if (reg1 != 1u || reg2 != 0xFFFFFFFFu || reg3 != 0xBADB00B5u || reg4 != 0xDEADBEEFu) {
+                printf(" and I feel bad. Bybye ...\n");
+                assert(0);
+             }
+        }
+
+        printf(" and I'm healthy. Leaving.\n");
+
+        return 0;
+}
+
+//Test 1
+
+int dummy2(void *arg){
+        printf(" 5");
+        assert((int) arg == DUMMY_VAL + 1);
+        return 4;
+}
+
+int dummy1(void *arg) {
+        printf("1");
+        assert((int) arg == DUMMY_VAL);
+        return 3;
+}
+
+int test1(void *arg){
+
+	int pid1;
+	int r;
+	int rval;
+
+	(void)arg;
+
+	pid1 = start(dummy1, 4000, 192, "dummy1",(void *) DUMMY_VAL);
+	assert(pid1 > 0);
+	printf(" 2");
+	r = waitpid(pid1, &rval);
+	assert(r == pid1);
+	assert(rval == 3);
+	printf(" 3");
+	pid1 = start(dummy2, 4000, 100, "dummy2", (void *) (DUMMY_VAL + 1));
+	assert(pid1 > 0);
+	printf(" 4");
+	r = waitpid(pid1, &rval);
+	assert(r == pid1);
+	assert(rval == 4);
+	printf(" 6.\n");
+	return 0;
+}
+
+//Test2
+
+int procExit(void *args)
+{
+        printf(" 5");
+        exit((int) args);
+        assert(0);
+        return 0;
+}
+
+int procKill(void *args)
+{
+        printf(" X");
+        return (int)args;
+}
+
+int test2(void *arg)
+{
+        int rval;
+        int r;
+        int pid1;
+        int val = 45;
+
+        (void)arg;
+
+        printf("1");
+        pid1 = start(procKill, 4000, 100, "procKill",(void *) val);
+        assert(pid1 > 0);
+        printf(" 2");
+        r = kill(pid1);
+        assert(r == 0);
+        printf(" 3");
+        r = waitpid(pid1, &rval);
+        assert(rval == 0);
+        assert(r == pid1);
+        printf(" 4");
+        pid1 = start(procExit, 4000, 192, "procExit",(void *) val);
+        assert(pid1 > 0);
+        printf(" 6");
+        r = waitpid(pid1, &rval);
+        assert(rval == val);
+        assert(r == pid1);
+        assert(waitpid(getpid(), &rval) < 0);
+        printf(" 7.\n");
+        return 0; //Added
+}
+
+
+//Test 3
+//TODO
+
+//////
+
+
+
+int start_test(void*    ) {
+
+        
+        int pid;
+        int ret;
+
+	printf("Test %i : ", 0);
+	pid = start(test0, 4000,1,"test0",NULL);
+        printf("pid = %i",pid);
+	waitpid(pid, &ret);
+	assert(ret == 0);
+
+	printf("Test %i : ", 1);
+	pid = start(test1, 4000,1,"test1",NULL);
+	waitpid(pid, &ret);
+	assert(ret == 0);
+
+
+	printf("Test %i : ", 2);
+	pid = start(test2, 4000,128,"test2",NULL);
+	waitpid(pid, &ret);
+	assert(ret == 0);
+        
+        return 0;
+
+}
+
+/////////////////////////////////
+
 void kernel_start(void)
 {
 	init_clock();	
 	efface_ecran();
-	
-	int i;
-//	call_debugger();
-	
-	printf("test\ntoto");
-	i = 10;
 
-	i = fact(i);
-
-	printf("test\n%i    toto", i);
-
-	start(idle, 1024, 0, "idle", NULL);
-	start(proc1, 1024, 1, "proc1", (void*)(1235));
-
-	idle(NULL);
-
+        
+	start(idle ,1024,0,"idle",NULL);
+	start(start_test ,1024,1,"start_test",NULL);
+        
+        idle(NULL);
+        
 	while(1)
 	  hlt();
 
 	return;
 }
+
+
+
+
+
