@@ -11,8 +11,7 @@
 enum PROCESS_STATE {
     ACTIVE,
     ACTIVABLE,
-    PRECEIVE,
-    WAIT, 
+    WAIT_MESSAGE,
     WAIT_IO,
     WAIT_CHILD,
     SLEEP,
