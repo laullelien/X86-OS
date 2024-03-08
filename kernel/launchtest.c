@@ -266,6 +266,57 @@ int test4(void *args)
         return 0;
 }
 
+/*  Test 5  */
+
+int no_run(void *arg)
+{
+        (void)arg;
+        assert(0);
+        return 1;
+}
+
+int waiter(void *arg)
+{
+        int pid = (int)arg;
+        assert(kill(pid) == 0);
+        assert(waitpid(pid, 0) < 0);
+        return 1;
+}
+
+
+int test5(void *arg)
+{
+        int pid1, pid2;
+        int r;
+
+        (void)arg;
+
+        // Le processus 0 et la priorite 0 sont des parametres invalides
+        assert(kill(0) < 0);
+        assert(chprio(getpid(), 0) < 0);
+        assert(getprio(getpid()) == 128);
+
+        pid1 = start(no_run, 4000, 64, "no_run1", 0);
+        assert(pid1 > 0);
+        assert(kill(pid1) == 0);
+        assert(kill(pid1) < 0); //pas de kill de zombie
+        assert(chprio(pid1, 128) < 0); //changer la priorite d'un zombie
+        assert(chprio(pid1, 64) < 0); //changer la priorite d'un zombie
+        assert(waitpid(pid1, 0) == pid1);
+        assert(waitpid(pid1, 0) < 0);
+        pid1 = start(no_run, 4000, 64, "no_run2", 0);
+        assert(pid1 > 0);
+        pid2 = start(waiter, 4000, 65, "waiter",(void *)pid1);
+        assert(pid2 > 0);
+        assert(waitpid(pid2, &r) == pid2);
+        assert(r == 1);
+        assert(waitpid(pid1, &r) == pid1);
+        assert(r == 0);
+        printf("ok.\n");
+
+        return 1;   //added
+}
+
 /* Test 6 */
 
 // int proc6_1(void){
@@ -379,21 +430,24 @@ int test4(void *args)
 
 ////
 
-#define NB_TEST_CASE 5
-static int size = NB_TEST_CASE;
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4};
+#define NB_TEST_CASE 6
+static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5};
 
 int launchtest() {
     int pid;
     int ret;
     for (int i = 0; i < size; i++)
     {
-        printf("Test %i : ", i);
-        char name[6] = {'t', 'e', 's', 't', '\0', '\0'};
-        name[4] = i + 48;
-        pid = start(test_case[i], 4000, 128, name, 0);
-        waitpid(pid, &ret);
-        assert(ret == 0);
+        if (test_case[i]!=NULL) 
+        {
+            printf("Test %i : ", i);
+            char name[6] = {'t', 'e', 's', 't', '\0', '\0'};
+            name[4] = i + 48;
+            pid = start(test_case[i], 4000, 128, name, 0);
+            waitpid(pid, &ret);
+            assert(ret == 0);
+        }
     }
     return 1;
 }
