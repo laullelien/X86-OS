@@ -107,7 +107,7 @@ int dummy1(void *arg) {
         return 3;
 }
 
-int test1(void *arg){
+int test1(void *arg){ //prio = 128
 
 	int pid1;
 	int r;
@@ -248,6 +248,13 @@ int test3(void *arg)
         return 0; //Added
 }
 
+//Test4
+
+
+
+
+
+
 //////
 
 
@@ -258,7 +265,6 @@ int start_test(void* ) {
 
 	printf("Test %i : ", 0);
 	pid = start(test0, 4000,128,"test0",NULL);
-        printf("pid = %i",pid);
 	waitpid(pid, &ret);
 	assert(ret == 0);
 
