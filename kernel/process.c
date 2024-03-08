@@ -175,6 +175,9 @@ int kill(int pid) {
     if (PROCESS_TABLE[pid] == NULL) {
         return -2;
     }
+    if (PROCESS_TABLE[pid]->state == ZOMBIE) {
+        return -3;
+    }
     terminate_process(PROCESS_TABLE[pid]);
     PROCESS_TABLE[pid]->return_value = 0;
     ordonnance();
