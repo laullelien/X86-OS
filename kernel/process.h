@@ -11,8 +11,7 @@
 enum PROCESS_STATE {
     ACTIVE,
     ACTIVABLE,
-    PRECEIVE,
-    WAIT, 
+    WAIT_MESSAGE,
     WAIT_IO,
     WAIT_CHILD,
     SLEEP,
@@ -28,6 +27,8 @@ typedef struct _Process{
     uint32_t *stack;
     unsigned long stack_size;
     int priority;
+
+    int no_priority;
     
     struct _Process *parent;
 
@@ -57,5 +58,6 @@ int kill(int pid);
 void exit(int retval);
 int waitpid(int pid, int *retvalp);
 
+void make_process_activable(Process *process);
 
 #endif /* __PROCESS_H_INCLUDED__ */
