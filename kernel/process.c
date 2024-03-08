@@ -122,6 +122,10 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     process->children_list.next = &(process->children_list);
     process->children_list.prev = &(process->children_list);
 
+    if (process->pid != 0) {
+        ordonnance();
+    }
+
     return process->pid;
 }
 
@@ -243,5 +247,6 @@ int chprio(int pid, int newprio){
             queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
         }
     }
+    ordonnance();
     return oldprio;
 }
