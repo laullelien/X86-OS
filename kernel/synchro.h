@@ -6,19 +6,24 @@
 #define NBQUEUE 8
 
 typedef struct _Pipe{
-
+    int fid;
+    
     link conso;
     int nb_conso;
     link prod;
     int nb_prod;
 
-    int * messages;
+    int *messages;
     int deb, taille;
     int taille_max;
 
     link listfield;
 
 } Pipe;
+
+int pcreate(int count);
+int pdelete(int fid);
+int preset(int fid);
 
 /*
 

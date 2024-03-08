@@ -19,6 +19,7 @@ static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
 
 
+
 static void mark_process_killed(Process *process) {
 
     process->state = KILLED;
@@ -32,6 +33,11 @@ static void mark_process_killed(Process *process) {
     }
 
     queue_add(process, &KILLED_LIST, Process, listfield, priority);
+}
+
+void make_process_activable(Process *process) {
+    process->state = ACTIVABLE;
+    queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
 }
 
 Process * getprocess(int pid){
@@ -172,6 +178,7 @@ void exit(int retval) {
 }
 
 int waitpid(int pid, int *retvalp) {
+    // TODO waitpid depuis le kernel valide ?
     if (pid >= 0) {
         if (pid < 0 || pid >= NBPROC) {
             return -1;
