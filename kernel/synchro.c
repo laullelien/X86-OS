@@ -132,7 +132,7 @@ int psend(int fid, int message){
         Process * process = getprocess(getpid());
 
         process->return_value = message;
-        queue_add(process, &(file->prod), Process, listfield, no_priority);
+        queue_add(process, &(file->prod), Process, listfield, priority);
         process->state = WAIT_MESSAGE;
         file->nb_prod++;
         ordonnance();
