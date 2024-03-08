@@ -7,6 +7,8 @@
 
 extern unsigned char first_stack[FIRST_STACK_SIZE];
 
+//Const for tests:
+#define DUMMY_VAL 78
 
 /* This is the first user process to start. It is mapped to the entry point
 of the user code. */

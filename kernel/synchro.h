@@ -36,4 +36,7 @@ int preset(int fid);
 
 */
 
+int psend(int fid, int message);
+int pcount(int fid, int *count);
+
 #endif
