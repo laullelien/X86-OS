@@ -125,6 +125,8 @@ int psend(int fid, int message){
         file->nb_conso--;
         process->return_value = message;
         make_process_activable(process);
+        ordonnance();
+        return 0;
     }
     else if (file->taille >= file->taille_max){
         Process * process = getprocess(getpid());
