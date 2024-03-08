@@ -38,6 +38,8 @@ typedef struct _Process{
     int return_value;
     link listfield;
 
+    link *queue_head;
+
 } Process;
 
 extern void ctx_sw(void *, void *);

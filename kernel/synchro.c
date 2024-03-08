@@ -121,7 +121,8 @@ int psend(int fid, int message){
         return -1;
     
     if(file->taille == 0 && !queue_empty(&(file->conso))){
-        Process * process = queue_out(&(file->conso), Process, listfield);
+        Process *process = queue_out(&(file->conso), Process, listfield);
+        process->queue_head = NULL;
         file->nb_conso--;
         process->return_value = message;
         make_process_activable(process);
@@ -131,6 +132,8 @@ int psend(int fid, int message){
 
         process->return_value = message;
         queue_add(process, &(file->prod), Process, listfield, no_priority);
+        process->queue_head = &(file->prod);
+
         process->state = WAIT_MESSAGE;
         file->nb_prod++;
         ordonnance();
