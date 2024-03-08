@@ -27,8 +27,6 @@ typedef struct _Process{
     uint32_t *stack;
     unsigned long stack_size;
     int priority;
-
-    int no_priority;
     
     struct _Process *parent;
 

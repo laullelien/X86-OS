@@ -126,14 +126,16 @@ int psend(int fid, int message){
         file->nb_conso--;
         process->return_value = message;
         make_process_activable(process);
+        ordonnance();
+        return 0;
     }
     else if (file->taille >= file->taille_max){
         Process * process = getprocess(getpid());
 
         process->return_value = message;
-        queue_add(process, &(file->prod), Process, listfield, no_priority);
+        queue_add(process, &(file->prod), Process, listfield, priority);
         process->queue_head = &(file->prod);
-
+        
         process->state = WAIT_MESSAGE;
         file->nb_prod++;
         ordonnance();
