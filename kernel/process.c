@@ -83,6 +83,7 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     strncpy(process->name, name, PROCESS_NAME_LEN);
 
     process->priority = prio;
+    process->no_priority = 0;
 
     if (process->pid == 0) {
         process->state = ACTIVE;

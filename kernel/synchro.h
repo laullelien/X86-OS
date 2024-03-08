@@ -31,4 +31,7 @@ typedef struct _Pipe{
 
 */
 
+int psend(int fid, int message);
+int pcount(int fid, int *count);
+
 #endif
