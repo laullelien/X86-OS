@@ -19,6 +19,7 @@ static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
 
 
+
 static void mark_process_killed(Process *process) {
 
     process->state = KILLED;
@@ -32,11 +33,21 @@ static void mark_process_killed(Process *process) {
     }
 
     queue_add(process, &KILLED_LIST, Process, listfield, priority);
+    process->queue_head = &KILLED_LIST;
+
+    PROCESS_TABLE[process->pid] = NULL;
+}
+
+void make_process_activable(Process *process) {
+    process->state = ACTIVABLE;
+    queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
+    process->queue_head = &ACTIVABLE_LIST;
 }
 
 Process * getprocess(int pid){
-    if (pid >=0 && pid < NBPROC)
+    if (pid >=0 && pid < NBPROC) {
         return PROCESS_TABLE[pid];
+    }
     return NULL;
 }
 
@@ -48,9 +59,11 @@ void ordonnance() {
     if (old_process->state == ACTIVE) {
         old_process->state = ACTIVABLE;
         queue_add(old_process, &ACTIVABLE_LIST, Process, listfield, priority);
+        old_process->queue_head = &ACTIVABLE_LIST;
     }
     
     Process *new_process = queue_out(&ACTIVABLE_LIST, Process, listfield);    
+    new_process->queue_head = NULL;
     if (new_process == old_process) {
         CURRENT_PROCESS->state = ACTIVE;
         return;
@@ -71,14 +84,17 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
             return -1;
         } else {
             process = queue_out(&KILLED_LIST, Process, listfield);
+            process->queue_head = NULL;
             mem_free(process->stack, process->stack_size); // TODO do this in mark_process_killed
+            
         }
     } else {
         process = check_pointer(mem_alloc(sizeof(Process)));
         process->pid = NEXT_PID;
-        PROCESS_TABLE[process->pid] = process;
         NEXT_PID += 1;
     }
+
+    PROCESS_TABLE[process->pid] = process;
     
     strncpy(process->name, name, PROCESS_NAME_LEN);
 
@@ -88,8 +104,9 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
         process->state = ACTIVE;
         CURRENT_PROCESS = process;
     } else {
-        process->state = ACTIVABLE; // TODO peut être active si prio > au courant?
+        process->state = ACTIVABLE;
         queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
+        process->queue_head = &ACTIVABLE_LIST;
         
     }
 
@@ -109,11 +126,16 @@ int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name
     } else {
         process->parent = CURRENT_PROCESS;
         queue_add(process, &(CURRENT_PROCESS->children_list), Process, brothers_listfield, priority);
+
     }
     
     process->return_value = 0;
     process->children_list.next = &(process->children_list);
     process->children_list.prev = &(process->children_list);
+
+    if (process->pid != 0) {
+        ordonnance();
+    }
 
     return process->pid;
 }
@@ -131,6 +153,7 @@ static void terminate_process(Process *process) {
         if (process->parent->state == WAIT_CHILD) {
             process->parent->state = ACTIVABLE;
             queue_add(process->parent, &ACTIVABLE_LIST, Process, listfield, priority);
+            process->parent->queue_head = &ACTIVABLE_LIST;
         }
     }
 
@@ -152,9 +175,6 @@ int kill(int pid) {
     if (PROCESS_TABLE[pid] == NULL) {
         return -2;
     }
-    if (PROCESS_TABLE[pid]->state == KILLED) {
-        return -3;
-    }
     terminate_process(PROCESS_TABLE[pid]);
     PROCESS_TABLE[pid]->return_value = 0;
     ordonnance();
@@ -172,12 +192,13 @@ void exit(int retval) {
 }
 
 int waitpid(int pid, int *retvalp) {
+    // TODO waitpid depuis le kernel valide ?
     if (pid >= 0) {
         if (pid < 0 || pid >= NBPROC) {
             return -1;
         }
 
-        if (PROCESS_TABLE[pid] == NULL || PROCESS_TABLE[pid]->state == KILLED) {
+        if (PROCESS_TABLE[pid] == NULL) {
             return -2;
         }
 
@@ -223,17 +244,19 @@ int getprio(int pid){
 }
 
 int chprio(int pid, int newprio){
-    Process * process = getprocess(pid);
-    if (process == NULL)
+    Process *process = getprocess(pid);
+    if (process == NULL) {
         return -1;
+    }
 
     int oldprio = process->priority;
     if (newprio != oldprio){
         process->priority = newprio;
-        if (process->state == ACTIVABLE){
+        if (process->queue_head != NULL){
             queue_del(process, listfield);
-            queue_add(process, &ACTIVABLE_LIST, Process, listfield, priority);
+            queue_add(process, process->queue_head, Process, listfield, priority);
         }
     }
+    ordonnance();
     return oldprio;
 }

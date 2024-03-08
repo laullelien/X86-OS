@@ -36,6 +36,8 @@ typedef struct _Process{
     int return_value;
     link listfield;
 
+    link *queue_head;
+
 } Process;
 
 extern void ctx_sw(void *, void *);
@@ -56,5 +58,6 @@ int kill(int pid);
 void exit(int retval);
 int waitpid(int pid, int *retvalp);
 
+void make_process_activable(Process *process);
 
 #endif /* __PROCESS_H_INCLUDED__ */

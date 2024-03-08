@@ -7,6 +7,9 @@
 #include "start.h"
 #include "process.h"
 #include "stddef.h"
+#include "launchtest.h"
+
+
 
 int fact(int n)
 {
@@ -19,7 +22,7 @@ int fact(int n)
 
 int idle(void *) {
     for(;;) {
-		printf("idle\n");
+        //printf("idle\n");
         sti();
         hlt();
         cli();
@@ -40,7 +43,7 @@ int proc2(void *param){
 
 int proc1(void *param) {
 	int i=1;
-	for(;;) {
+        for(;;) {
 		printf("%i proc: %p    %i\n", i, param, getpid());
 		i ++;
 		if (i % 5 == 0) {
@@ -64,28 +67,25 @@ int proc1(void *param) {
 	}
 }
 
+
 void kernel_start(void)
 {
 	init_clock();	
 	efface_ecran();
-	
-	int i;
-//	call_debugger();
-	
-	printf("test\ntoto");
-	i = 10;
 
-	i = fact(i);
-
-	printf("test\n%i    toto", i);
-
-	start(idle, 1024, 0, "idle", NULL);
-	start(proc1, 1024, 1, "proc1", (void*)(1235));
-
-	idle(NULL);
-
+        
+	start(idle ,1024,0,"idle",NULL);
+	start(launchtest ,1024,1,"launchtest",NULL);
+        
+        idle(NULL);
+        
 	while(1)
 	  hlt();
 
 	return;
 }
+
+
+
+
+
