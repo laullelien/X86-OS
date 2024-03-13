@@ -61,6 +61,7 @@ int chprio(int pid, int newprio);
 int kill(int pid);
 void exit(int retval);
 int waitpid(int pid, int *retvalp);
+void wait_clock(unsigned long clock);
 
 void make_process_activable(Process *process);
 
