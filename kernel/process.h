@@ -8,6 +8,8 @@
 
 #define PROCESS_NAME_LEN 20
 
+#define MAX_SSIZE 4294967292
+
 enum PROCESS_STATE {
     ACTIVE,
     ACTIVABLE,

@@ -313,126 +313,215 @@ int test5(void *arg)
         assert(waitpid(pid1, &r) == pid1);
         assert(r == 0);
         printf("ok.\n");
-
-        return 1;   //added
+        return 0;   //added
 }
 
-/* Test 6 */
+// /* Test 6 */
 
-// int proc6_1(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addik r3,r0,3\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl $3,%eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
+extern int proc6_1(void*);
 
-// int proc6_2(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addk r3,r0,r5\n"
-//         "swi r3,r1,-4\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl 4(%esp),%eax\n"
-//         "pushl %eax\n"
-//         "popl %eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
-
-// int proc6_3(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addk r3,r0,r5\n"
-//         "swi r3,r1,-4\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl 4(%esp),%eax\n"
-//         "pushl %eax\n"
-//         "popl %eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
+        #if defined microblaze
+        __asm__(
+        ".text\n"
+        ".globl main\n"
+        "main:\n"
+        "addik r3,r0,3\n"
+        "rtsd r15,8\n"
+        "nop\n"
+        ".previous\n"
+        );
+        #else
+        __asm__(
+        ".text\n"
+        ".globl proc6_1\n"
+        "proc6_1:\n"
+        "movl $3,%eax\n"
+        "ret\n"
+        ".previous\n"
+        );
+        #endif
 
 
-// int test6(void *arg)
+extern int proc6_2(void*);
+        #if defined microblaze
+        __asm__(
+        ".text\n"
+        ".globl main\n"
+        "main:\n"
+        "addk r3,r0,r5\n"
+        "swi r3,r1,-4\n"
+        "rtsd r15,8\n"
+        "nop\n"
+        ".previous\n"
+        );
+        #else
+        __asm__(
+        ".text\n"
+        ".globl proc6_2\n"
+        "proc6_2:\n"
+        "movl 4(%esp),%eax\n"
+        "pushl %eax\n"
+        "popl %eax\n"
+        "ret\n"
+        ".previous\n"
+        );
+        #endif
+
+
+extern int proc6_3(void*);
+__asm__(
+".text\n"
+".globl proc6_3\n"
+"proc6_3:\n"
+"movl 4(%esp),%eax\n"
+"pushl %eax\n"
+"popl %eax\n"
+"ret\n"
+".previous\n"
+);
+
+
+int test6(void *arg)
+{
+        int pid1, pid2, pid3;
+        int ret;
+
+        (void)arg;
+
+        assert(getprio(getpid()) == 128);
+        pid1 = start(proc6_1, 1000, 64, "proc6_1", 0);
+        assert(pid1 > 0);
+        pid2 = start(proc6_2, 4000, 66, "proc6_2", (void*)4);
+        assert(pid2 > 0);
+        pid3 = start(proc6_3, 0xffffffff, 65, "proc6_3",(void*)5);
+        assert(pid3 < 0);
+        pid3 = start(proc6_3, 8000, 65, "proc6_3",(void*)5);
+        assert(pid3 > 0);
+        assert(waitpid(-1, &ret) == pid2);
+        assert(ret == 4);
+        assert(waitpid(-1, &ret) == pid3);
+        assert(ret == 5);
+        assert(waitpid(-1, &ret) == pid1);
+        assert(ret == 3);
+        assert(waitpid(pid1, 0) < 0);
+        assert(waitpid(-1, 0) < 0);
+        assert(waitpid(getpid(), 0) < 0);
+        printf("ok.\n");
+        return 0; //added
+}
+
+/* Test 7 */
+
+// int sleep_pr1(void *arg)
 // {
-//         int pid1, pid2, pid3;
-//         int ret;
+//         (void)arg;
+//         wait_clock(current_clock() + 2);
+//         printf(" not killed !!!");
+//         assert(0);
+//         return 1;
+// }
+
+// #ifdef TELECOM_TST
+// int test7(void *arg)
+// {
+//         (void)arg;
+//         printf("Test desactive pour les TELECOM.\n");
+// }
+
+// #else
+
+// int test7(void *arg)
+// {
+//         int pid1, pid2, r;
+//         unsigned long c0, c, quartz, ticks, dur;
+//         volatile unsigned long *timer = NULL;
 
 //         (void)arg;
+//         timer = shm_create("test7_shm");
+//         assert(timer != NULL);
 
 //         assert(getprio(getpid()) == 128);
-//         pid1 = start(proc6_1, 0, 64, "proc6_1", 0);
+//         printf("1");
+//         pid1 = start(timer1, 4000, 129, "timer1", 0);
 //         assert(pid1 > 0);
-//         pid2 = start(proc6_2, 4, 66, "proc6_2", (void*)4);
+//         printf(" 3");
+//         assert(waitpid(-1, 0) == pid1);
+//         printf(" 8 : ");
+
+//         *timer = 0;
+//         pid1 = start(timer, 4000, 127, "timer", 0);
+//         pid2 = start(timer, 4000, 127, "timer", 0);
+//         assert(pid1 > 0);
 //         assert(pid2 > 0);
-//         pid3 = start(proc6_3, 0xffffffff, 65, "proc6_3",(void*)5);
-//         assert(pid3 < 0);
-//         pid3 = start(proc6_3, 8, 65, "proc6_3",(void*)5);
-//         assert(pid3 > 0);
-//         assert(waitpid(-1, &ret) == pid2);
-//         assert(ret == 4);
-//         assert(waitpid(-1, &ret) == pid3);
-//         assert(ret == 5);
-//         assert(waitpid(-1, &ret) == pid1);
-//         assert(ret == 3);
-//         assert(waitpid(pid1, 0) < 0);
-//         assert(waitpid(-1, 0) < 0);
-//         assert(waitpid(getpid(), 0) < 0);
-//         printf("ok.\n");
+//         clock_settings(&quartz, &ticks);
+//         dur = 2 * quartz / ticks;
+//         test_it();
+//         c0 = current_clock();
+//         do {
+//                 test_it();
+//                 c = current_clock();
+//         } while (c == c0);
+//         wait_clock(c + dur);
+//         assert(kill(pid1) == 0);
+//         assert(waitpid(pid1, 0) == pid1);
+//         assert(kill(pid2) == 0);
+//         assert(waitpid(pid2, 0) == pid2);
+//         printf("%lu changements de contexte sur %lu tops d'horloge", *timer, dur);
+//         pid1 = start(sleep_pr1, 4000, 192, "sleep_pr1", 0);
+//         assert(pid1 > 0);
+//         assert(kill(pid1) == 0);
+//         assert(waitpid(pid1, &r) == pid1);
+//         assert(r == 0);
+//         printf(".\n");
+//         shm_release("test7_shm");
 // }
+// #endif
+
+// int timer(void *arg)
+// {
+//         volatile unsigned long *timer = NULL;
+//         timer = shm_acquire("test7_shm");
+//         assert(timer != NULL);
+
+//         (void)arg;
+//         while (1) {
+//                 unsigned long t = *timer + 1;
+//                 *timer = t;
+//                 while (*timer == t) test_it();
+//         }
+//         while (1);
+//         return 0;
+// }
+
+// int timer1(void *arg)
+// {
+//         (void)arg;
+
+//         unsigned long quartz;
+//         unsigned long ticks;
+//         unsigned long dur;
+//         int i;
+
+//         clock_settings(&quartz, &ticks);
+//         dur = (quartz + ticks) / ticks;
+//         printf(" 2");
+//         for (i = 4; i < 8; i++) {
+//                 wait_clock(current_clock() + dur);
+//                 printf(" %d", i);
+//         }
+//         return 0;
+// }
+
+
+
 
 
 
 ////
 
-#define NB_TEST_CASE 6
+#define NB_TEST_CASE 7
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5};
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6};
 
 int launchtest() {
     int pid;

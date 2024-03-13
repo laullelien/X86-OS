@@ -78,6 +78,10 @@ void ordonnance() {
 
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg) {
     Process *process;
+
+    if(ssize>=MAX_SSIZE){
+        return -1;
+    }
     
     if (NEXT_PID >= NBPROC) {
         if (queue_empty(&KILLED_LIST)) {
@@ -219,6 +223,7 @@ int waitpid(int pid, int *retvalp) {
             return -4;
         }
 
+
         while (pid < 0) {
             // TODO make another list for ended processes
             Process *child_process;
@@ -228,6 +233,10 @@ int waitpid(int pid, int *retvalp) {
                     break;
                 }
             }
+            if (pid >= 0) {
+                break;
+            }
+            CURRENT_PROCESS->state = WAIT_CHILD;
             ordonnance();
         }
     }
