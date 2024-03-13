@@ -5,9 +5,10 @@
 
 #define NBQUEUE 8
 
-typedef struct _Pipe{
+typedef struct _Pipe
+{
     int fid;
-    
+
     link conso;
     int nb_conso;
     link prod;
@@ -36,6 +37,7 @@ int preset(int fid);
 
 */
 
+int preceive(int fid, int *message);
 int psend(int fid, int message);
 int pcount(int fid, int *count);
 
