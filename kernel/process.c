@@ -251,6 +251,16 @@ int chprio(int pid, int newprio){
     if (process == NULL) {
         return -1;
     }
+    if (newprio==0){
+        return -2;
+    }
+    if (process->state==ZOMBIE){
+        return -3;
+    }
+    if (process->state==KILLED){
+        return -4;
+    }
+
 
     int oldprio = process->priority;
     if (newprio != oldprio){
