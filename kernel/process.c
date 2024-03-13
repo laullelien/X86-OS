@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "cpu.h"
 #include "queue.h"
+#include "time.h"
 
 extern void exit_asm();
 
@@ -50,6 +51,14 @@ Process * getprocess(int pid){
         return PROCESS_TABLE[pid];
     }
     return NULL;
+}
+
+static void awake(){
+    Process * p;
+    while (!queue_empty(&SLEEP_LIST) && (queue_top(&SLEEP_LIST, Process, listfield))->wakeup_time <= current_clock()){
+        p = queue_out(&SLEEP_LIST, Process, listfield);
+        make_process_activable(p);
+    }
 }
 
 void ordonnance() {
@@ -274,14 +283,6 @@ int chprio(int pid, int newprio){
     }
     ordonnance();
     return oldprio;
-}
-
-void awake(){
-    Process * p;
-    while (!queue_empty && queue_top(&SLEEP_LIST, Process, listfield)->wakeup_time <= current_clock()){
-        p = queue_out(&SLEEP_LIST, Process, listfield);
-        make_process_activable(p);
-    }
 }
 
 void wait_clock(unsigned long clock){
