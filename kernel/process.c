@@ -18,6 +18,7 @@ static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 
 static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
 
+static link SLEEP_LIST = LIST_HEAD_INIT(SLEEP_LIST);
 
 
 static void mark_process_killed(Process *process) {
@@ -52,6 +53,7 @@ Process * getprocess(int pid){
 }
 
 void ordonnance() {
+    awake();
     if (queue_empty(&ACTIVABLE_LIST)) {
         return;
     }
@@ -262,4 +264,26 @@ int chprio(int pid, int newprio){
     }
     ordonnance();
     return oldprio;
+}
+
+void awake(){
+    Process * p;
+    while (!queue_empty && queue_top(&SLEEP_LIST, Process, listfield)->wakeup_time <= current_clock()){
+        p = queue_out(&SLEEP_LIST, Process, listfield);
+        make_process_activable(p);
+    }
+}
+
+void wait_clock(unsigned long clock){
+    Process * cur = CURRENT_PROCESS;
+
+    cur->state = SLEEP;
+
+    cur->queue_head = &SLEEP_LIST;
+
+    cur->wakeup_time = current_clock() + clock;
+
+    queue_add(cur, &SLEEP_LIST, Process, listfield, wakeup_time);
+
+    ordonnance();
 }
