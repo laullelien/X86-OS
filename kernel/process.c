@@ -5,7 +5,7 @@
 #include "mem.h"
 #include "cpu.h"
 #include "queue.h"
-#include "time.h"
+²#include "time.h"
 
 extern void exit_asm();
 
