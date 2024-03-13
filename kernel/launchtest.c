@@ -313,122 +313,105 @@ int test5(void *arg)
         assert(waitpid(pid1, &r) == pid1);
         assert(r == 0);
         printf("ok.\n");
-
         return 0;   //added
 }
 
-/* Test 6 */
+// /* Test 6 */
 
-// int proc6_1(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addik r3,r0,3\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl $3,%eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
+extern int proc6_1(void*);
 
-// int proc6_2(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addk r3,r0,r5\n"
-//         "swi r3,r1,-4\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl 4(%esp),%eax\n"
-//         "pushl %eax\n"
-//         "popl %eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
-
-// int proc6_3(void){
-//         #if defined microblaze
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "addk r3,r0,r5\n"
-//         "swi r3,r1,-4\n"
-//         "rtsd r15,8\n"
-//         "nop\n"
-//         ".previous\n"
-//         );
-//         #else
-//         __asm__(
-//         ".text\n"
-//         ".globl main\n"
-//         "main:\n"
-//         "movl 4(%esp),%eax\n"
-//         "pushl %eax\n"
-//         "popl %eax\n"
-//         "ret\n"
-//         ".previous\n"
-//         );
-//         #endif
-//         return 0;
-// }
+        #if defined microblaze
+        __asm__(
+        ".text\n"
+        ".globl main\n"
+        "main:\n"
+        "addik r3,r0,3\n"
+        "rtsd r15,8\n"
+        "nop\n"
+        ".previous\n"
+        );
+        #else
+        __asm__(
+        ".text\n"
+        ".globl proc6_1\n"
+        "proc6_1:\n"
+        "movl $3,%eax\n"
+        "ret\n"
+        ".previous\n"
+        );
+        #endif
 
 
-// int test6(void *arg)
-// {
-//         int pid1, pid2, pid3;
-//         int ret;
-
-//         (void)arg;
-
-//         assert(getprio(getpid()) == 128);
-//         pid1 = start(proc6_1, 0, 64, "proc6_1", 0);
-//         assert(pid1 > 0);
-//         pid2 = start(proc6_2, 4, 66, "proc6_2", (void*)4);
-//         assert(pid2 > 0);
-//         pid3 = start(proc6_3, 0xffffffff, 65, "proc6_3",(void*)5);
-//         assert(pid3 < 0);
-//         pid3 = start(proc6_3, 8, 65, "proc6_3",(void*)5);
-//         assert(pid3 > 0);
-//         assert(waitpid(-1, &ret) == pid2);
-//         assert(ret == 4);
-//         assert(waitpid(-1, &ret) == pid3);
-//         assert(ret == 5);
-//         assert(waitpid(-1, &ret) == pid1);
-//         assert(ret == 3);
-//         assert(waitpid(pid1, 0) < 0);
-//         assert(waitpid(-1, 0) < 0);
-//         assert(waitpid(getpid(), 0) < 0);
-//         printf("ok.\n");
-// }
+extern int proc6_2(void*);
+        #if defined microblaze
+        __asm__(
+        ".text\n"
+        ".globl main\n"
+        "main:\n"
+        "addk r3,r0,r5\n"
+        "swi r3,r1,-4\n"
+        "rtsd r15,8\n"
+        "nop\n"
+        ".previous\n"
+        );
+        #else
+        __asm__(
+        ".text\n"
+        ".globl proc6_2\n"
+        "proc6_2:\n"
+        "movl 4(%esp),%eax\n"
+        "pushl %eax\n"
+        "popl %eax\n"
+        "ret\n"
+        ".previous\n"
+        );
+        #endif
 
 
+extern int proc6_3(void*);
+__asm__(
+".text\n"
+".globl proc6_3\n"
+"proc6_3:\n"
+"movl 4(%esp),%eax\n"
+"pushl %eax\n"
+"popl %eax\n"
+"ret\n"
+".previous\n"
+);
 
-////
+
+int test6(void *arg)
+{
+        int pid1, pid2, pid3;
+        int ret;
+
+        (void)arg;
+
+        assert(getprio(getpid()) == 128);
+        pid1 = start(proc6_1, 1000, 64, "proc6_1", 0);
+        assert(pid1 > 0);
+        pid2 = start(proc6_2, 4000, 66, "proc6_2", (void*)4);
+        assert(pid2 > 0);
+        pid3 = start(proc6_3, 0xffffffff, 65, "proc6_3",(void*)5);
+        assert(pid3 < 0);
+        pid3 = start(proc6_3, 8000, 65, "proc6_3",(void*)5);
+        assert(pid3 > 0);
+        assert(waitpid(-1, &ret) == pid2);
+        assert(ret == 4);
+        assert(waitpid(-1, &ret) == pid3);
+        assert(ret == 5);
+        assert(waitpid(-1, &ret) == pid1);
+        assert(ret == 3);
+        assert(waitpid(pid1, 0) < 0);
+        assert(waitpid(-1, 0) < 0);
+        assert(waitpid(getpid(), 0) < 0);
+        printf("ok.\n");
+        return 0; //added
+}
+
+
+/* Test 7
 
 int sleep_pr1(void *arg)
 {
@@ -481,7 +464,7 @@ int timer1(void *arg)
  * Test de l'horloge (ARR et ACE)
  * Tentative de determination de la frequence du processeur et de la
  * periode de scheduling
- ******************************************************************************/
+ ******************************************************************************
 
 #ifdef TELECOM_TST
 int test7(void *arg)
@@ -529,7 +512,7 @@ int test7(void *arg)
         assert(kill(pid2) == 0);
         assert(waitpid(pid2, 0) == pid2);
         printf("%lu changements de contexte sur %lu tops d'horloge", *timer, dur);
-        pid1 = start("sleep_pr1", 4000, 192, 0);
+        pid1 = start(sleep_pr1, 4000, 192,  "sleep_pr1", 0);
         assert(pid1 > 0);
         assert(kill(pid1) == 0);
         assert(waitpid(pid1, &r) == pid1);
@@ -539,12 +522,12 @@ int test7(void *arg)
 }
 #endif
 
-
+*/
 
 
 #define NB_TEST_CASE 6
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5, NULL, test7};
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5, test6, NULL};
 
 int launchtest() {
     int pid;

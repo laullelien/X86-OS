@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "cpu.h"
 #include "queue.h"
+#include "time.h"
 
 extern void exit_asm();
 
@@ -18,6 +19,7 @@ static link ACTIVABLE_LIST = LIST_HEAD_INIT(ACTIVABLE_LIST);
 
 static link KILLED_LIST = LIST_HEAD_INIT(KILLED_LIST);
 
+static link SLEEP_LIST = LIST_HEAD_INIT(SLEEP_LIST);
 
 
 static void mark_process_killed(Process *process) {
@@ -51,7 +53,16 @@ Process * getprocess(int pid){
     return NULL;
 }
 
+static void awake(){
+    Process * p;
+    while (!queue_empty(&SLEEP_LIST) && (queue_top(&SLEEP_LIST, Process, listfield))->wakeup_time <= current_clock()){
+        p = queue_out(&SLEEP_LIST, Process, listfield);
+        make_process_activable(p);
+    }
+}
+
 void ordonnance() {
+    awake();
     if (queue_empty(&ACTIVABLE_LIST)) {
         return;
     }
@@ -78,6 +89,10 @@ void ordonnance() {
 
 int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg) {
     Process *process;
+
+    if(ssize>=MAX_SSIZE){
+        return -1;
+    }
     
     if (NEXT_PID >= NBPROC) {
         if (queue_empty(&KILLED_LIST)) {
@@ -219,6 +234,7 @@ int waitpid(int pid, int *retvalp) {
             return -4;
         }
 
+
         while (pid < 0) {
             // TODO make another list for ended processes
             Process *child_process;
@@ -228,6 +244,10 @@ int waitpid(int pid, int *retvalp) {
                     break;
                 }
             }
+            if (pid >= 0) {
+                break;
+            }
+            CURRENT_PROCESS->state = WAIT_CHILD;
             ordonnance();
         }
     }
@@ -272,4 +292,18 @@ int chprio(int pid, int newprio){
     }
     ordonnance();
     return oldprio;
+}
+
+void wait_clock(unsigned long clock){
+    Process * cur = CURRENT_PROCESS;
+
+    cur->state = SLEEP;
+
+    cur->queue_head = &SLEEP_LIST;
+
+    cur->wakeup_time = current_clock() + clock;
+
+    queue_add(cur, &SLEEP_LIST, Process, listfield, wakeup_time);
+
+    ordonnance();
 }

@@ -8,6 +8,8 @@
 
 #define PROCESS_NAME_LEN 20
 
+#define MAX_SSIZE 4294967292
+
 enum PROCESS_STATE {
     ACTIVE,
     ACTIVABLE,
@@ -27,7 +29,9 @@ typedef struct _Process{
     uint32_t *stack;
     unsigned long stack_size;
     int priority;
-    
+
+    unsigned long wakeup_time;  
+
     struct _Process *parent;
 
     link children_list;
