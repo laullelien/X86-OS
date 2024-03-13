@@ -166,9 +166,7 @@ static void terminate_process(Process *process) {
     } else {
         process->state = ZOMBIE;
         if (process->parent->state == WAIT_CHILD) {
-            process->parent->state = ACTIVABLE;
-            queue_add(process->parent, &ACTIVABLE_LIST, Process, listfield, priority);
-            process->parent->queue_head = &ACTIVABLE_LIST;
+            make_process_activable(process->parent);
         }
     }
 
@@ -226,6 +224,7 @@ int waitpid(int pid, int *retvalp) {
 
         while (PROCESS_TABLE[pid]->state != ZOMBIE) {
             CURRENT_PROCESS->state = WAIT_CHILD;
+            CURRENT_PROCESS->queue_head = NULL;
             ordonnance();
         }
 
@@ -248,6 +247,7 @@ int waitpid(int pid, int *retvalp) {
                 break;
             }
             CURRENT_PROCESS->state = WAIT_CHILD;
+            CURRENT_PROCESS->queue_head = NULL;
             ordonnance();
         }
     }
