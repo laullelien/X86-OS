@@ -458,7 +458,7 @@ int timer1(void *arg)
 }
 
 
-/*******************************************************************************
+*******************************************************************************
  * Test 7
  *
  * Test de l'horloge (ARR et ACE)
@@ -525,7 +525,7 @@ int test7(void *arg)
 */
 
 
-#define NB_TEST_CASE 6
+#define NB_TEST_CASE 8
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
 static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5, test6, NULL};
 
