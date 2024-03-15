@@ -26,19 +26,13 @@ int pcreate(int count);
 int pdelete(int fid);
 int preset(int fid);
 
-/*
-
-    pcreate : crée une file de messages
-    pdelete : détruit une file de messages
-    psend : dépose un message dans une file
-    preceive : retire un message d'une file
-    preset : réinitialise une file
-    pcount : renvoie l'état courant d'une file
-
-*/
-
 int preceive(int fid, int *message);
 int psend(int fid, int message);
 int pcount(int fid, int *count);
+
+void *shm_create(const char *key);
+void *shm_acquire(const char *key);
+void shm_release(const char *key);
+void init_shm();
 
 #endif

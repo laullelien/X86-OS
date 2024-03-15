@@ -7,6 +7,7 @@
 #include "start.h"
 #include "process.h"
 #include "stddef.h"
+#include "synchro.h"
 #include "launchtest.h"
 
 
@@ -72,6 +73,7 @@ void kernel_start(void)
 {
 	init_clock();	
 	efface_ecran();
+	init_shm();
 
         
 	start(idle ,1024,0,"idle",NULL);

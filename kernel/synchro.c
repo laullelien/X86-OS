@@ -2,15 +2,18 @@
 #include "stddef.h"
 #include "process.h"
 #include "queue.h"
-#include "queue.h"
 #include "debugger.h"
-#include "stddef.h"
-#include "process.h"
 #include "mem.h"
+#include "hash.h"
+
 
 static Pipe *PIPES[NBQUEUE];
 static int NEXT_FID = 0;
 static link PIPES_QUEUE = LIST_HEAD_INIT(PIPES_QUEUE);
+
+static hash_t SHM_TABLE;
+
+
 
 int preceive(int fid, int *message)
 {
@@ -192,4 +195,25 @@ int pcount(int fid, int *count){
         *count = file->taille + file->nb_prod - file->nb_conso;
     }
     return 0;
+}
+
+
+
+void *shm_create(const char *key) {
+    if (hash_isset(&SHM_TABLE, (void *)key)) {
+        return hash_get(&SHM_TABLE, (void *)key, NULL);
+    }
+    void *address = check_pointer(mem_alloc(1<<12));
+    hash_set(&SHM_TABLE, (void *)key, address);
+    return address;
+}
+void *shm_acquire(const char *key) {
+    return hash_get(&SHM_TABLE, (void *)key, NULL);
+}
+void shm_release(const char *key) {
+    hash_del(&SHM_TABLE, (void *)key);
+}
+
+void init_shm() {
+    hash_init_string(&SHM_TABLE);
 }
