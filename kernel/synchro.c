@@ -200,10 +200,19 @@ int pcount(int fid, int *count){
 
 
 void *shm_create(const char *key) {
-    if (hash_isset(&SHM_TABLE, (void *)key)) {
-        return hash_get(&SHM_TABLE, (void *)key, NULL);
+    if (key == NULL) {
+        return NULL;
     }
-    void *address = check_pointer(mem_alloc(1<<12));
+    
+    if (hash_isset(&SHM_TABLE, (void *)key)) {
+        return NULL;
+    }
+    void *address = mem_alloc(1<<12);
+    
+    if (address == NULL) {
+        return NULL;
+    }
+
     hash_set(&SHM_TABLE, (void *)key, address);
     return address;
 }
