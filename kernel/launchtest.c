@@ -7,6 +7,8 @@
 #include "process.h"
 #include "stddef.h"
 #include "launchtest.h"
+#include "synchro.h"
+#include "div64.h"
 
 /*  Test 0  */
 
@@ -411,7 +413,16 @@ int test6(void *arg)
 }
 
 
-/* Test 7
+// Test 7
+
+// *******************************************************************************
+//  * Test 7
+//  *
+//  * Test de l'horloge (ARR et ACE)
+//  * Tentative de determination de la frequence du processeur et de la
+//  * periode de scheduling
+//  ******************************************************************************
+
 
 int sleep_pr1(void *arg)
 {
@@ -422,7 +433,7 @@ int sleep_pr1(void *arg)
         return 1;
 }
 
-int timer(void *arg)
+int timer_function(void *arg)
 {
         volatile unsigned long *timer = NULL;
         timer = shm_acquire("test7_shm");
@@ -458,14 +469,6 @@ int timer1(void *arg)
 }
 
 
-*******************************************************************************
- * Test 7
- *
- * Test de l'horloge (ARR et ACE)
- * Tentative de determination de la frequence du processeur et de la
- * periode de scheduling
- ******************************************************************************
-
 #ifdef TELECOM_TST
 int test7(void *arg)
 {
@@ -494,8 +497,8 @@ int test7(void *arg)
         printf(" 8 : ");
 
         *timer = 0;
-        pid1 = start(timer, 4000, 127, "timer", 0);
-        pid2 = start(timer, 4000, 127, "timer", 0);
+        pid1 = start(timer_function, 4000, 127, "timer_function", 0);
+        pid2 = start(timer_function, 4000, 127, "timer_function", 0);
         assert(pid1 > 0);
         assert(pid2 > 0);
         clock_settings(&quartz, &ticks);
@@ -519,15 +522,77 @@ int test7(void *arg)
         assert(r == 0);
         printf(".\n");
         shm_release("test7_shm");
+        return 0;
 }
 #endif
 
-*/
+//Test 8
+
+/*******************************************************************************
+ * Test 8
+ *
+ * Creation de processus se suicidant en boucle. Test de la vitesse de creation
+ * de processus.
+ ******************************************************************************/
+
+int suicide(void *arg)
+{
+        (void)arg;
+        kill(getpid());
+        assert(0);
+        return 0;
+}
+
+int suicide_launcher(void *arg)
+{
+	int pid1;
+        (void)arg;
+	pid1 = start(suicide, 4000, 192, "suicide", 0);
+	assert(pid1 > 0);
+	return pid1;
+}
+
+int test8(void *arg)
+{
+        unsigned long long tsc1;
+        unsigned long long tsc2;
+        int i, r, pid, count;
+
+        (void)arg;
+        assert(getprio(getpid()) == 128);
+
+        /* Le petit-fils va passer zombie avant le fils mais ne pas
+           etre attendu par waitpid. Un nettoyage automatique doit etre
+           fait. */
+        pid = start(suicide_launcher, 4000, 129, "suicide_launcher",0);
+        assert(pid > 0);
+        assert(waitpid(pid, &r) == pid);
+        assert(chprio(r, 192) < 0);
+
+        count = 0;
+        __asm__ __volatile__("rdtsc":"=A"(tsc1));
+        do {
+                for (i=0; i<10; i++) {
+                        pid = start(suicide_launcher, 4000, 200, "suicide_launcher",0);
+                        assert(pid > 0);
+                        assert(waitpid(pid, 0) == pid);
+                }
+                test_it();
+                count += i;
+                __asm__ __volatile__("rdtsc":"=A"(tsc2));
+        } while ((tsc2 - tsc1) < 1000000000);
+        printf("%lu cycles/process.\n", (unsigned long)div64(tsc2 - tsc1, 2 * (unsigned)count));
+        return 0;
+}
 
 
-#define NB_TEST_CASE 8
+
+
+
+
+#define NB_TEST_CASE 9
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, test4, test5, test6, NULL};
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6, NULL, test8};
 
 int launchtest() {
     int pid;
