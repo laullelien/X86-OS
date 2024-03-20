@@ -573,7 +573,7 @@ int test8(void *arg)
         __asm__ __volatile__("rdtsc":"=A"(tsc1));
         do {
                 for (i=0; i<10; i++) {
-                        pid = start(suicide_launcher, 4000, 200, "suicide_launcher",0);
+                        pid = start(suicide_launcher, 4000, 200 , "suicide_launcher",0);
                         assert(pid > 0);
                         assert(waitpid(pid, 0) == pid);
                 }
@@ -584,6 +584,11 @@ int test8(void *arg)
         printf("%lu cycles/process.\n", (unsigned long)div64(tsc2 - tsc1, 2 * (unsigned)count));
         return 0;
 }
+
+
+
+
+
 
 
 
