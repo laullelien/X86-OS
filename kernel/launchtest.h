@@ -10,6 +10,8 @@
 //Const for tests:
 #define DUMMY_VAL 78
 
+#define WITH_MSG 1
+
 //Test 4 
 #ifdef microblaze
 static const int loop_count0 = 500;
