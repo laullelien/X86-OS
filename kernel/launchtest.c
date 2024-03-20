@@ -9,6 +9,7 @@
 #include "launchtest.h"
 #include "synchro.h"
 #include "div64.h"
+#include "string.h"
 
 typedef unsigned long long uint_fast64_t;
 typedef unsigned long uint_fast32_t;
@@ -633,7 +634,7 @@ int test8(void *arg)
         __asm__ __volatile__("rdtsc":"=A"(tsc1));
         do {
                 for (i=0; i<10; i++) {
-                        pid = start(suicide_launcher, 4000, 200, "suicide_launcher",0);
+                        pid = start(suicide_launcher, 4000, 200 , "suicide_launcher",0);
                         assert(pid > 0);
                         assert(waitpid(pid, 0) == pid);
                 }
@@ -646,6 +647,77 @@ int test8(void *arg)
 }
 
 
+/*******************************************************************************
+ * Test 10
+ * Test l'utilisation des semaphores ou des files de messages selon le sujet.
+ *******************************************************************************/
+
+#if defined WITH_SEM
+/* Test d'utilisation d'un semaphore comme simple compteur. */
+int main(void *arg)
+{
+        int sem1;
+        (void)arg;
+        sem1 = screate(2);
+        assert(sem1 >= 0);
+        assert(scount(sem1) == 2);
+        assert(signal(sem1) == 0);
+        assert(scount(sem1) == 3);
+        assert(signaln(sem1, 2) == 0);
+        assert(scount(sem1) == 5);
+        assert(wait(sem1) == 0);
+        assert(scount(sem1) == 4);
+        assert(sreset(sem1, 7) == 0);
+        assert(scount(sem1) == 7);
+        assert(sdelete(sem1) == 0);
+        printf("ok.\n");
+        return 0;
+}
+
+#elif defined WITH_MSG
+/* Test d'utilisation d'une file comme espace de stockage temporaire. */
+
+static void write(int fid, const char *buf, unsigned long len)
+{
+        unsigned long i;
+        for (i=0; i<len; i++) {
+                assert(psend(fid, buf[i]) == 0);
+        }
+}
+
+static void read(int fid, char *buf, unsigned long len)
+{
+        unsigned long i;
+        for (i=0; i<len; i++) {
+                int msg;
+                assert(preceive(fid, &msg) == 0);
+                buf[i] = (char)msg;
+        }
+}
+int test10(void *arg)
+{
+        int fid;
+        const char *str = "abcde";
+        unsigned long len = strlen(str);
+        char buf[10];
+
+        (void)arg;
+
+        printf("1");
+        assert((fid = pcreate(5)) >= 0);
+        write(fid, str, len);
+        printf(" 2");
+        read(fid, buf, len);
+        buf[len] = 0;
+        assert(strcmp(str, buf) == 0);
+        assert(pdelete(fid) == 0);
+        printf(" 3.\n");
+        return 0;
+}
+
+#else
+# error "WITH_SEM" ou "WITH_MSG" doit être définie.
+#endif
 
 //nothing.c
 // int nothing(void *arg)
@@ -873,9 +945,16 @@ int test9(void *arg)
 
 
 
-#define NB_TEST_CASE 10
+
+
+
+
+
+
+
+#define NB_TEST_CASE 11
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6, NULL, NULL, test9};
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6, NULL, test8, test9, test10};
 
 int launchtest() {
     int pid;

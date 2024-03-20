@@ -26,7 +26,7 @@ static void mark_process_killed(Process *process) {
 
     process->state = KILLED;
     process->priority = 1;
-    if (process->parent != NULL) {
+    if (process->brothers_listfield.prev != NULL) {
         queue_del(process, brothers_listfield);
     }
 
@@ -171,13 +171,26 @@ static void terminate_process(Process *process) {
     }
 
     Process *child_process;
+    Process *previous_process = NULL;
 
     queue_for_each(child_process, &(process->children_list), Process, brothers_listfield) {
+        if (previous_process != NULL) {
+            mark_process_killed(previous_process);// TODO ici on enleve le process de la liste de enfants, donc on casse l'itération
+            previous_process = NULL;
+        }
         child_process->parent = NULL;
         if (child_process->state == ZOMBIE) {
-            mark_process_killed(child_process);
+            previous_process = child_process;
+            
         }
     }
+
+    if (previous_process != NULL) {
+        mark_process_killed(previous_process);// TODO ici on enleve le process de la liste de enfants, donc on casse l'itération
+        previous_process = NULL;
+    }
+
+    
 }
 
 
@@ -191,8 +204,9 @@ int kill(int pid) {
     if (PROCESS_TABLE[pid]->state == ZOMBIE) {
         return -3;
     }
+    PROCESS_TABLE[pid]->return_value = 0; 
     terminate_process(PROCESS_TABLE[pid]);
-    PROCESS_TABLE[pid]->return_value = 0;
+    
     ordonnance();
     return 0;
 }
