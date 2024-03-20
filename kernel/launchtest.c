@@ -10,6 +10,66 @@
 #include "synchro.h"
 #include "div64.h"
 
+typedef unsigned long long uint_fast64_t;
+typedef unsigned long uint_fast32_t;
+
+/*******************************************************************************
+ * Pseudo random number generator
+ ******************************************************************************/
+static unsigned long long mul64(unsigned long long x, unsigned long long y)
+{
+        unsigned long a, b, c, d, e, f, g, h;
+        unsigned long long res = 0;
+        a = x & 0xffff;
+        x >>= 16;
+        b = x & 0xffff;
+        x >>= 16;
+        c = x & 0xffff;
+        x >>= 16;
+        d = x & 0xffff;
+        e = y & 0xffff;
+        y >>= 16;
+        f = y & 0xffff;
+        y >>= 16;
+        g = y & 0xffff;
+        y >>= 16;
+        h = y & 0xffff;
+        res = d * e;
+        res += c * f;
+        res += b * g;
+        res += a * h;
+        res <<= 16;
+        res += c * e;
+        res += b * f;
+        res += a * g;
+        res <<= 16;
+        res += b * e;
+        res += a * f;
+        res <<= 16;
+        res += a * e;
+        return res;
+}
+
+static const uint_fast64_t _multiplier = 0x5DEECE66DULL;
+static const uint_fast64_t _addend = 0xB;
+static const uint_fast64_t _mask = (1ULL << 48) - 1;
+static uint_fast64_t _seed = 1;
+
+// Assume that 1 <= _bits <= 32
+static uint_fast32_t randBits(int _bits)
+{
+        uint_fast32_t rbits;
+        uint_fast64_t nextseed = (mul64(_seed, _multiplier) + _addend) & _mask;
+        _seed = nextseed;
+        rbits = nextseed >> 16;
+        return rbits >> (32 - _bits);
+}
+
+unsigned long rand()
+{
+        return randBits(32);
+}
+
 /*  Test 0  */
 
 int test0(void *arg)
@@ -587,12 +647,235 @@ int test8(void *arg)
 
 
 
+//nothing.c
+// int nothing(void *arg)
+// {
+//         (void)arg;
+//         return 0;
+// }
+
+extern int nothing(void *arg);
+
+//test_eax.c
+static unsigned eax = 0xBADB00B5;
+static unsigned *it_ok_test_eax = NULL;
+
+void __test_valid_eax(unsigned a1)
+{
+        __asm__ __volatile__(
+        "   pushl %%eax                 \n" /* Sauver %eax */
+        "   movl  %1,       %%eax       \n" /* Attendre un scheduling, ie que *it_ok vaille 1 */
+        "0: testl $1,       %2          \n"
+        "   jz    0b                    \n"
+        "   movl  %%eax,    %0          \n" /* Récupérer la valeur d'%eax après interruption */
+        "   popl  %%eax                 \n" /* Restaurer %eax */
+        : "=m" (eax)
+        : "m" (a1), "m" (*it_ok_test_eax)
+        : "%eax", "memory"
+        );
+        /* %eax doit avoir conservé sa valeur avant interruption ! */
+        assert(eax == a1);
+}
+
+int test_eax(void *arg)
+{
+        (void)arg;
+        it_ok_test_eax = (unsigned*) shm_acquire("test9_shm");
+        *it_ok_test_eax = 0x0u;
+        __test_valid_eax(rand());
+        shm_release("test9_shm");
+        return 0;
+
+}
+
+//test_reg2.c
+
+static unsigned ebx = 1;
+static unsigned ecx = 2;
+static unsigned edx = 3;
+static unsigned edi = 4;
+static unsigned esi = 5;
+static unsigned ebp_before = 0x12345678u;
+static unsigned esp_before = 0x98765432u;
+static unsigned ebp_after = 0xCAFE0101u;
+static unsigned esp_after = 0x1010CAFEu;
+static volatile unsigned *it_ok = NULL;
+
+void __test_valid_regs2(unsigned a1,
+                        unsigned a2,
+                        unsigned a3,
+                        unsigned a4,
+                        unsigned a5)
+{
+        /* Initialise les registres avec des valeurs spéciales */
+        __asm__ __volatile__(
+        "movl %2,       %%ebx    \n"
+        "movl %3,       %%ecx    \n"
+        "movl %4,       %%edx    \n"
+        "movl %5,       %%edi    \n"
+        "movl %6,       %%esi    \n"
+        /* Sauve le "stack pointer" et le "frame pointer" */
+        "movl %%ebp,     %0      \n"
+        "movl %%esp,     %1      \n"
+        : "=m" (ebp_before), "=m" (esp_before)
+        : "m" (a1), "m" (a2), "m" (a3), "m" (a4), "m" (a5)
+        : "%ebx","%ecx", "%edx", "%edi", "%esi", "memory"
+        );
+
+        /* Attendre au moins un scheduling (ie des interruptions) */
+        while (*it_ok == 0);
+
+        /* Sauver les valeurs des registres */
+        __asm__ __volatile__(
+        "movl %%ebp,    %0      \n"
+        "movl %%esp,    %1      \n"
+        "movl %%ebx,    %2      \n"
+        "movl %%ecx,    %3      \n"
+        "movl %%edx,    %4      \n"
+        "movl %%edi,    %5      \n"
+        "movl %%esi,    %6      \n"
+        : "=m" (ebp_after), "=m" (esp_after), "=m" (ebx), "=m" (ecx), "=m" (edx), "=m" (edi), "=m" (esi)
+        : /* No input registers */
+        : "memory"
+        );
+
+        /* Controler la validite des registres sauves */
+        assert(ebp_before == ebp_after);
+        assert(esp_before == esp_after);
+        assert(ebx == a1);
+        assert(ecx == a2);
+        assert(edx == a3);
+        assert(edi == a4);
+        assert(esi == a5);
+}
+
+int test_regs2(void *arg)
+{
+        (void)arg;
+        it_ok = (unsigned*) shm_acquire("test9_shm");
+        *it_ok = 0x0u;
+        __test_valid_regs2(rand(), rand(), rand(), rand(), rand());
+        shm_release("test9_shm");
+        return 0;
+}
+
+//test9.c 
+
+static unsigned int ebp_before2 = 0x12345678u;
+static unsigned int esp_before2 = 0x87654321u;
+static unsigned int ebp_after2  = 0xDEADBEEFu;
+static unsigned int esp_after2  = 0xDEADFACEu;
+static unsigned int eax2        = 0xBADB00B5u;
+static unsigned int ebx2        = 0xF0F0F0F0u;
+static unsigned int edi2        = 0x0F0F0F0Fu;
+static unsigned int esi2        = 0xABCDEFABu;
+
+__asm__(
+"       .data                   \n"
+"nothing:                       \n"
+"       .string \"nothing\"     \n"
+"       .previous               \n"
+);
+
+void __test_valid_regs1(unsigned a1, unsigned a2, unsigned a3)
+{
+        __asm__ __volatile__(
+        /* Assigner des valeurs connues aux registres */
+        "movl   %8,     %%ebx           \n"
+        "movl   %9,     %%edi           \n"
+        "movl   %10,    %%esi           \n"
+        "movl   %%ebp,  %0              \n"
+        "movl   %%esp,  %1              \n"
+
+        /* Démarrer le processus "nothing" */
+        "pushl  $0                      \n"
+        "pushl  $192                    \n"
+        "pushl  $4000                   \n"
+        "pushl  $nothing                \n"
+        "call   start                   \n"
+        "addl   $16,    %%esp           \n"
+        "movl   %%eax,  %2              \n"
+
+        /* Sauver les registres */
+        "movl %%ebx,    %3              \n"
+        "movl %%edi,    %4              \n"
+        "movl %%esi,    %5              \n"
+        "movl %%ebp,    %6              \n"
+        "movl %%esp,    %7              \n"
+
+        /* Registres de sortie */
+        : "=m" (ebp_before2), "=m" (esp_before2),
+          "=m" (eax2),        "=m" (ebx2),
+          "=m" (edi2),        "=m" (esi2),
+          "=m" (ebp_after2),  "=m" (esp_after2)
+        /* Registres en entrée */
+        : "m" (a1),
+          "m" (a2),
+          "m" (a3)
+        /* Registres utilisés par ce bloc ASM*/
+        : "eax", "ebx", "edi", "esi", "memory"
+        );
+
+        /* On attend le processus nothing dont le pid est dans eax */
+        assert(waitpid((int)eax, NULL) == (int)eax);
+
+        /* Vérifier les valeurs des registres après l'appel */
+        assert(ebx2 == a1);
+        assert(edi2 == a2);
+        assert(esi2 == a3);
+        assert(ebp_before2 == ebp_after2);
+        assert(esp_before2 == esp_after2);
+}
+
+int test9(void *arg)
+{
+        int i;
+        int pid;
+        volatile unsigned *it_ok2 = NULL;
+
+        (void)arg;
+        it_ok2 = (unsigned*) shm_create("test9_shm");
+        assert(it_ok2 != NULL);
+        assert(getprio(getpid()) == 128);
+        printf("1");
+
+        for (i = 0; i < 1000; i++) {
+                __test_valid_regs1(rand(), rand(), rand());
+        }
+        printf(" 2");
+
+        /* Test de la cohérence de tous les registres */
+        for (i = 0; i < 100; i++) {
+                *it_ok2 = 1;
+                pid = start(test_regs2, 4000, 128, "test_regs2", 0);
+                assert(pid > 0);
+                while (*it_ok2 != 0);
+                *it_ok2 = 1;
+                assert(waitpid(pid, 0) == pid);
+        }
+        printf(" 3");
+
+        /* Test de la cohérence de %eax */
+        for (i = 0; i < 100; i++) {
+                *it_ok2 = 1;
+                pid = start(test_eax, 4000, 128, "test_eax", 0);
+                assert(pid > 0);
+                while (*it_ok2 != 0);
+                *it_ok2 = 1;
+                assert(waitpid(pid, 0) == pid);
+        }
+        printf(" 4.\n");
+
+        shm_release("test9_shm");
+        return 0;
+}
 
 
 
-#define NB_TEST_CASE 9
+
+#define NB_TEST_CASE 10
 static int size = NB_TEST_CASE;                 /*Mark null to not execute the test case*/
-static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6, NULL, test8};
+static int (*test_case[NB_TEST_CASE])(void *) = {test0, test1, test2, test3, NULL, test5, test6, NULL, NULL, test9};
 
 int launchtest() {
     int pid;
