@@ -21,6 +21,17 @@ static const int loop_count0 = 5000;
 static const int loop_count1 = 10000;
 #endif
 
+/* Wrapper sur les verrous basés sur les sémaphores ou les files de messages */
+union sem {
+    int fid;
+    int sem;
+};
+
+struct test11_shared {
+        union sem sem;
+        int in_mutex;
+};
+
 
 extern int launchtest();
 
