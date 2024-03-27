@@ -40,7 +40,7 @@ int preceive(int fid, int *message)
     // La pile était pleine
     if (pipe->taille == pipe->taille_max - 1) {
         if (pipe->nb_prod > 0) {
-            Process *prod = queue_top(&pipe->prod, Process, listfield);
+            Process *prod = queue_out(&pipe->prod, Process, listfield);
             make_process_activable(prod);
             ordonnance();
             pipe->messages[(pipe->deb + pipe->taille) % pipe->taille_max] = prod->return_value;
