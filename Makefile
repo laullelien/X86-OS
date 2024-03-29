@@ -37,4 +37,3 @@ run: all
 
 debug: all
 	qemu-system-i386 -machine q35 -debugcon stdio -s -S -m 256M -kernel kernel/kernel.bin &
-	emacs --eval '(progn (gdb "gdb -i=mi kernel.bin") (insert "target remote :1234") (gdb-many-windows))'

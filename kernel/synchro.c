@@ -24,10 +24,13 @@ int preceive(int fid, int *message)
     if (pipe->taille == 0) {
         Process * process = getprocess(getpid());
         queue_add(process, &(pipe->conso), Process, listfield, priority);
+        process->queue_head = &(pipe->conso);
+
         process->state = WAIT_MESSAGE;
         pipe->nb_conso++;
         ordonnance();
-        return process->return_value;
+        *message = getprocess(getpid())->return_value; 
+        return 0;
     }
     else {
         if (message != NULL) {
@@ -38,15 +41,14 @@ int preceive(int fid, int *message)
     }
 
     // La pile était pleine
-    if (pipe->taille == pipe->taille_max - 1) {
+    if (pipe->taille >= pipe->taille_max - 1) {
         if (pipe->nb_prod > 0) {
             Process *prod = queue_out(&pipe->prod, Process, listfield);
             make_process_activable(prod);
-            ordonnance();
             pipe->messages[(pipe->deb + pipe->taille) % pipe->taille_max] = prod->return_value;
             pipe->taille++;
-            prod->return_value = 0;
             pipe->nb_prod--;
+            ordonnance();
         }
     }
     return 0;
@@ -167,7 +169,7 @@ int psend(int fid, int message){
         ordonnance();
         return 0;
     }
-    else if (file->taille >= file->taille_max){
+    else if (file->taille >= file->taille_max){ //pile pleine
         Process * process = getprocess(getpid());
 
         process->return_value = message;
@@ -177,7 +179,7 @@ int psend(int fid, int message){
         process->state = WAIT_MESSAGE;
         file->nb_prod++;
         ordonnance();
-        return process->return_value;
+        return 0;
     }
     else { /*(file->taille < file->taille_max)*/
         file->messages[(file->deb + file->taille)%file->taille_max] = message;
