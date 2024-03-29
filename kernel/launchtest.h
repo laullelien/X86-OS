@@ -32,6 +32,12 @@ struct test11_shared {
         int in_mutex;
 };
 
+struct psender {
+    int fid;
+    char data[32];
+};
+
+
 
 extern int launchtest();
 
