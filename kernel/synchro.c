@@ -12,6 +12,7 @@ static int NEXT_FID = 0;
 static link PIPES_QUEUE = LIST_HEAD_INIT(PIPES_QUEUE);
 
 static hash_t SHM_TABLE;
+static hash_t SHM_NB;
 
 
 
@@ -215,16 +216,34 @@ void *shm_create(const char *key) {
         return NULL;
     }
 
+    int * number = mem_alloc(sizeof(int));
+    *number = 0;
+
     hash_set(&SHM_TABLE, (void *)key, address);
+    hash_set(&SHM_NB, (void *)key, (void *)number);
     return address;
 }
 void *shm_acquire(const char *key) {
+    int * number = (int *)(hash_get(&SHM_NB, (void *)key, NULL));
+    *number += 1;
+    hash_set(&SHM_NB, (void *)key, (void *)number);
     return hash_get(&SHM_TABLE, (void *)key, NULL);
 }
+
 void shm_release(const char *key) {
-    hash_del(&SHM_TABLE, (void *)key);
+    //TODO 
+    //Quand cet appel amène à relacher la dernière référence sur une page partagée, 
+    // la page physique correspondante est effectivement libérée
+    if (*(int *)hash_get(&SHM_NB, (void *)key, 0) == 0)
+        hash_del(&SHM_TABLE, (void *)key);
+    else {
+        int * number = (int *)(hash_get(&SHM_NB, (void *)key, NULL));
+        *number -= 1;
+        hash_set(&SHM_NB, (void *)key, (void *)number);
+    }
 }
 
 void init_shm() {
     hash_init_string(&SHM_TABLE);
+    hash_init_direct(&SHM_NB);
 }
