@@ -59,6 +59,10 @@ int pcreate(int count) {
     if (count <= 0) {
         return -1;
     }
+    if(count > 64000000){  //Size max
+        return -2;
+    }
+
 
     Pipe *pipe;
 
@@ -100,7 +104,7 @@ static void empty_pipe(Pipe *pipe) {
 
     Process *prod;
     queue_for_each(prod, &(pipe->prod), Process, listfield) {
-        make_process_activable(prod);   
+        make_process_activable(prod);
         prod->return_value = -1;
     }
     queue_empty(&(pipe->prod));
@@ -166,6 +170,7 @@ int psend(int fid, int message){
         process->queue_head = NULL;
         file->nb_conso--;
         process->return_value = message;
+        // process->brothers_listfield
         make_process_activable(process);
         ordonnance();
         return 0;
