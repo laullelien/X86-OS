@@ -146,8 +146,24 @@ int preset(int fid) {
     }
     
     Pipe *pipe = PIPES[fid];
-    
-    empty_pipe(pipe);
+
+    for (int i=0;i<pipe->nb_conso;i++){
+        Process *process = queue_out(&(pipe->conso), Process, listfield);
+        process->queue_head = NULL;
+        pipe->nb_conso--;
+        process->return_value = -1;
+        make_process_activable(process);
+    }
+
+    for (int i=0;i<pipe->nb_prod;i++){
+        Process *process = queue_out(&(pipe->prod), Process, listfield);
+        process->queue_head = NULL;
+        pipe->nb_prod--;
+        process->return_value = -1;
+        make_process_activable(process);
+    }
+    pipe->deb = 0;
+    pipe->taille = 0;
     
     ordonnance(); // donner la main à un processus débloqué qui aurait une plus haute priorité
 
