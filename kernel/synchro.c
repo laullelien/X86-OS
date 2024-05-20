@@ -5,6 +5,7 @@
 #include "debugger.h"
 #include "mem.h"
 #include "hash.h"
+#include "string.h"
 
 
 static Pipe *PIPES[NBQUEUE];
@@ -12,81 +13,43 @@ static int NEXT_FID = 0;
 static link PIPES_QUEUE = LIST_HEAD_INIT(PIPES_QUEUE);
 
 static hash_t SHM_TABLE;
-static hash_t SHM_NB;
-
-
-
-int preceive(int fid, int *message)
-{
-    if (PIPES[fid] == NULL) {
-        return -1;
-    }
-    Pipe *pipe = PIPES[fid];
-    if (pipe->taille == 0) {
-        Process * process = getprocess(getpid());
-        queue_add(process, &(pipe->conso), Process, listfield, priority);
-        process->queue_head = &(pipe->conso);
-
-        process->state = WAIT_MESSAGE;
-        pipe->nb_conso++;
-        ordonnance();
-        *message = getprocess(getpid())->return_value; 
-        return 0;
-    }
-    else {
-        if (message != NULL) {
-            *message = pipe->messages[pipe->deb];
-        }
-        pipe->deb = (pipe->deb + 1) % pipe->taille_max;
-        --pipe->taille;
-    }
-
-    // La pile était pleine
-    if (pipe->taille >= pipe->taille_max - 1) {
-        if (pipe->nb_prod > 0) {
-            Process *prod = queue_out(&pipe->prod, Process, listfield);
-            make_process_activable(prod);
-            pipe->messages[(pipe->deb + pipe->taille) % pipe->taille_max] = prod->return_value;
-            pipe->taille++;
-            pipe->nb_prod--;
-            ordonnance();
-        }
-    }
-    return 0;
-}
 
 int pcreate(int count) {
-    if (count <= 0) {
+    if (count <= 0 || count >= 1<<29) {
         return -1;
     }
-    if(count > 64000000){  //Size max
+    int *messages =  mem_alloc((size_t)count * sizeof(int));
+    if (messages == NULL) {
         return -2;
     }
-
 
     Pipe *pipe;
 
     if (NEXT_FID >= NBQUEUE) {
         if (queue_empty(&PIPES_QUEUE)) {
-            return -2;
+            return -3;
         }
         pipe = queue_out(&PIPES_QUEUE, Pipe, listfield);
     } else {
-        pipe = check_pointer(mem_alloc(sizeof(Pipe)));
+        pipe = mem_alloc(sizeof(Pipe));
+        if (pipe == NULL) {
+            mem_free(messages, count * sizeof(int));
+            return -4;
+        }
         pipe->fid = NEXT_FID;
         NEXT_FID += 1;
-        pipe->conso.next = &(pipe->conso);
-        pipe->conso.prev = &(pipe->conso);
-
-        pipe->prod.next = &(pipe->prod);
-        pipe->prod.prev = &(pipe->prod);
-
+        
     }
 
+    pipe->conso.next = &(pipe->conso);
+    pipe->conso.prev = &(pipe->conso);
+
+    pipe->prod.next = &(pipe->prod);
+    pipe->prod.prev = &(pipe->prod);
+
     PIPES[pipe->fid] = pipe;
-    pipe->messages = check_pointer(mem_alloc(count * sizeof(int)));
-    pipe->nb_prod = 0;
-    pipe->nb_conso = 0;
+    pipe->messages = messages;
+
     pipe->deb = 0;
     pipe->taille = 0;
     pipe->taille_max = count;
@@ -94,21 +57,20 @@ int pcreate(int count) {
 }
 
 static void empty_pipe(Pipe *pipe) {
-    Process *conso;
-    queue_for_each(conso, &(pipe->conso), Process, listfield) {
+    
+    while (!queue_empty(&(pipe->conso))) {
+        Process *conso = queue_out(&(pipe->conso), Process, listfield);
         make_process_activable(conso);
-        conso->return_value = -1;
+        conso->pipe_success = -1;
     }
     queue_empty(&(pipe->conso));
-    pipe->nb_conso = 0;
 
-    Process *prod;
-    queue_for_each(prod, &(pipe->prod), Process, listfield) {
+    while (!queue_empty(&(pipe->prod))) {
+        Process *prod = queue_out(&(pipe->prod), Process, listfield);
         make_process_activable(prod);
-        prod->return_value = -1;
+        prod->pipe_success = -1;
     }
     queue_empty(&(pipe->prod));
-    pipe->nb_prod = 0;
     
     pipe->deb = 0;
     pipe->taille = 0;
@@ -145,53 +107,53 @@ int preset(int fid) {
         return -2;
     }
     
-    Pipe *pipe = PIPES[fid];
+    empty_pipe(PIPES[fid]);
 
-    for (int i=0;i<pipe->nb_conso;i++){
-        Process *process = queue_out(&(pipe->conso), Process, listfield);
-        process->queue_head = NULL;
-        pipe->nb_conso--;
-        process->return_value = -1;
-        make_process_activable(process);
-    }
-
-    for (int i=0;i<pipe->nb_prod;i++){
-        Process *process = queue_out(&(pipe->prod), Process, listfield);
-        process->queue_head = NULL;
-        pipe->nb_prod--;
-        process->return_value = -1;
-        make_process_activable(process);
-    }
-    pipe->deb = 0;
-    pipe->taille = 0;
-    
     ordonnance(); // donner la main à un processus débloqué qui aurait une plus haute priorité
 
     return 0;
 }
 
-Pipe * get_file(int fid){
+Pipe *get_file(int fid){
     if (fid >= 0 && fid < NBQUEUE)
         return PIPES[fid];
     return NULL;
 }
 
-int psend(int fid, int message){
+int pcount(int fid, int *count){
+    if (check_user_pointer(count)) {return-1;}
     Pipe * file = get_file(fid);
     if (file == NULL)
         return -1;
+
+    if (count!=NULL){
+        *count = file->taille;
+        Process *process;
+        queue_for_each(process, &(file->conso), Process, listfield) {
+            *count -= 1;
+        }
+
+        queue_for_each(process, &(file->prod), Process, listfield) {
+            *count += 1;
+        }
+    }
+    return 0;
+}
+
+int psend(int fid, int message){
+    Pipe * file = get_file(fid);
+    if (file == NULL) {
+        return -1;
+    }
     
     if(file->taille == 0 && !queue_empty(&(file->conso))){
         Process *process = queue_out(&(file->conso), Process, listfield);
         process->queue_head = NULL;
-        file->nb_conso--;
-        process->return_value = message;
-        // process->brothers_listfield
+        process->return_value = message; // le consommateur prendra message de return_value et l'inserera dans le tableau
         make_process_activable(process);
         ordonnance();
         return 0;
-    }
-    else if (file->taille >= file->taille_max){ //pile pleine
+    } else if (file->taille >= file->taille_max){ //pile pleine
         Process * process = getprocess(getpid());
 
         process->return_value = message;
@@ -199,72 +161,153 @@ int psend(int fid, int message){
         process->queue_head = &(file->prod);
         
         process->state = WAIT_MESSAGE;
-        file->nb_prod++;
+        process->pipe_success = 0;
         ordonnance();
-        return 0;
-    }
-    else { /*(file->taille < file->taille_max)*/
+        return process->pipe_success;
+    } else { 
         file->messages[(file->deb + file->taille)%file->taille_max] = message;
         file->taille++;
     }
     return 0;
 }
 
-int pcount(int fid, int *count){
-    Pipe * file = get_file(fid);
-    if (file == NULL)
-        return -1;
 
-    if (count!=NULL){
-        *count = file->taille + file->nb_prod - file->nb_conso;
+int preceive(int fid, int *message) {
+    if (check_user_pointer(message)) {return -1;}
+    Pipe * pipe = get_file(fid);
+    if (pipe == NULL) {
+        return -1;
+    }
+
+    if (pipe->taille == 0) {
+        Process *process = getprocess(getpid());
+        queue_add(process, &(pipe->conso), Process, listfield, priority);
+        process->queue_head = &(pipe->conso);
+
+        process->state = WAIT_MESSAGE;
+        process->pipe_success = 0;
+        ordonnance();
+        if (message != NULL) {
+            *message = process->return_value; 
+        }
+        return process->pipe_success;
+    } else {
+        if (message != NULL) {
+            *message = pipe->messages[pipe->deb];
+        }
+        pipe->deb = (pipe->deb + 1) % pipe->taille_max;
+        pipe->taille -= 1;
+    }
+
+    // Si la pile était pleine il ffaut reveiller un producteur en attente
+    if (pipe->taille >= pipe->taille_max - 1) {
+        if (!queue_empty(&(pipe->prod))) {
+            Process *prod = queue_out(&pipe->prod, Process, listfield);
+            make_process_activable(prod);
+            pipe->messages[(pipe->deb + pipe->taille) % pipe->taille_max] = prod->return_value;
+            pipe->taille++;
+            ordonnance();
+        }
     }
     return 0;
 }
 
 
 
+// SHM
+
+typedef struct _ShmObject {
+    int count;
+    void *address;
+    char *key;
+    void *user_address;
+    int page_index;
+
+} ShmObject;
+
+static int current_shm_index = 0;
+
+
+
 void *shm_create(const char *key) {
+    if (check_user_pointer(key)) {return NULL;}
     if (key == NULL) {
         return NULL;
     }
-    
+
     if (hash_isset(&SHM_TABLE, (void *)key)) {
         return NULL;
     }
-    void *address = mem_alloc(1<<12);
-    
-    if (address == NULL) {
+
+    ShmObject *shm = mem_alloc(sizeof(ShmObject));
+    if (shm == NULL) {
         return NULL;
     }
+    shm->address = user_alloc();
+    if (shm->address == NULL) {
+        mem_free(shm, sizeof(ShmObject));
+        return NULL;
+    }
+    shm->key = mem_alloc(strlen(key)+1);
+    if (shm->key == NULL) {
+        mem_free(shm, sizeof(ShmObject));
+        user_free(shm->address);
+    }
 
-    int * number = mem_alloc(sizeof(int));
-    *number = 0;
+    shm->count = 0;
+    shm->page_index = current_shm_index;
+    current_shm_index ++;
 
-    hash_set(&SHM_TABLE, (void *)key, address);
-    hash_set(&SHM_NB, (void *)key, (void *)number);
-    return address;
+    shm->user_address = (void *)((1<<31) + shm->page_index*(1<<12));
+    
+    strcpy(shm->key, key);
+
+    hash_set(&SHM_TABLE, (void *)shm->key, shm);
+
+    return shm_acquire(key);
 }
 void *shm_acquire(const char *key) {
-    int * number = (int *)(hash_get(&SHM_NB, (void *)key, NULL));
-    *number += 1;
-    hash_set(&SHM_NB, (void *)key, (void *)number);
-    return hash_get(&SHM_TABLE, (void *)key, NULL);
+    if (check_user_pointer(key)) {return NULL;}
+    ShmObject *shm = hash_get(&SHM_TABLE, (void *)key, NULL);
+    if (shm == NULL) {
+        return NULL;
+    }
+    Process *process = getprocess(getpid());
+    if (process->page_directory.shm_page_table[shm->page_index] == 0) {
+        // ce process n'a pas encore ouvert ce shm
+        shm->count ++;
+    }
+
+    process->page_directory.shm_page_table[shm->page_index] = ((uint32_t)shm->address)|0x7;
+    cr3_sw((void*) process->page_directory.address); // il faut forcer la mase à jour du page directory 
+    return shm->user_address;
 }
 
 void shm_release(const char *key) {
-    //TODO 
-    //Quand cet appel amène à relacher la dernière référence sur une page partagée, 
-    // la page physique correspondante est effectivement libérée
-    if (*(int *)hash_get(&SHM_NB, (void *)key, 0) == 0)
+    if (check_user_pointer(key)) {return;}
+    ShmObject *shm = hash_get(&SHM_TABLE, (void *)key, NULL);
+    
+    if (shm == NULL) {
+        return;
+    }
+    Process *process = getprocess(getpid());
+    if (process->page_directory.shm_page_table[shm->page_index] == 0) {
+        // ce process n'a pas ouvert ce shm
+        return;
+    }
+    shm->count --;
+    
+    process->page_directory.shm_page_table[shm->page_index] = 0;
+    cr3_sw((void*) process->page_directory.address); // il faut forcer la mase à jour du page directory 
+
+    if (shm->count <= 0) {
         hash_del(&SHM_TABLE, (void *)key);
-    else {
-        int * number = (int *)(hash_get(&SHM_NB, (void *)key, NULL));
-        *number -= 1;
-        hash_set(&SHM_NB, (void *)key, (void *)number);
+        mem_free(shm->key, strlen(shm->key)+1);
+        user_free(shm->address);
+        mem_free(shm, sizeof(ShmObject));
     }
 }
 
 void init_shm() {
     hash_init_string(&SHM_TABLE);
-    hash_init_direct(&SHM_NB);
 }

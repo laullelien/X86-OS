@@ -247,9 +247,11 @@ void trap_handler(unsigned trapno, unsigned error_code)
 
 void *check_pointer(void *pointer) {
 	if (pointer == NULL) {
-		//printf("\nNULL POINTER\n");
+		printf("\nNULL POINTER\n");
+		*(int*)0 = 0;
 		hlt();
 	}
 
 	return pointer;
 }
+

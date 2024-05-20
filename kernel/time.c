@@ -39,7 +39,6 @@ void tic_PIT(void){
     outb(0x20,0x20);
 
     char buffer[50];
-    nb_tic++;
     
     if (nb_tic % CLOCK_FREQ == 0) {
         int S=0;
@@ -53,17 +52,19 @@ void tic_PIT(void){
         sprintf(buffer,"%02i:%02i:%02i",H,M,S);
         print_time(buffer,8);
     }
+    nb_tic++;
+    ordonnance();
 }
 
 
-static void init_traitant_IT(uint32_t num_IT, void (*traitant)(void)){
+static void init_traitant_IT(uint32_t num_IT, void (*traitant)(void), uint32_t flag){
     uint32_t M1;
     uint32_t M2;
     uint32_t adr=0x1000+(8*num_IT);
     uint32_t adr_trait= (uint32_t )traitant;
     M1=(KERNEL_CS<<16);
     M1=M1|(adr_trait&0x0000FFFF);
-    M2=(adr_trait&0xFFFF0000)|(0x00008E00);
+    M2=(adr_trait&0xFFFF0000)|(flag);
     uint32_t *ptr=(uint32_t *) adr;
     *ptr=M1;
     ptr+=1;
@@ -71,8 +72,6 @@ static void init_traitant_IT(uint32_t num_IT, void (*traitant)(void)){
 }
 
 static void set_freq(){
-    
-
     outb(0x34,0x43);
     outb(QUARTZ_TICKS & 0xFF, 0x40);
     outb((QUARTZ_TICKS>>8), 0x40);
@@ -88,8 +87,24 @@ static void mask_IRQ(uint32_t num_IRQ, bool maskPar){
     outb(mask, 0x21);
 }
 
+extern void traitant_IT_49();
+extern void traitant_IT_14();
+extern void traitant_IT_1();
+
 void init_clock(void){
-	init_traitant_IT(32, traitant_IT_32);
+	// clavier
+    init_traitant_IT(33, traitant_IT_1, 0x00008E00);
+	mask_IRQ(1,0);
+
+    // pagefault
+    init_traitant_IT(14, traitant_IT_14, 0x0000EE00);
+
+    // appel kernel
+    init_traitant_IT(49, traitant_IT_49, 0x0000EE00);
+
+    // clock
+    init_traitant_IT(32, traitant_IT_32, 0x00008E00);
     set_freq();
     mask_IRQ(0,0);
+    
 }

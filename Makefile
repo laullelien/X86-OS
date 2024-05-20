@@ -28,15 +28,20 @@ kernel/$(PLATFORM_TOOLS):
 user/$(PLATFORM_TOOLS):
 	$(MAKE) -C user/ $(PLATFORM_TOOLS)
 
-clean:
-	$(MAKE) clean -C kernel/
+cleanUser:
 	$(MAKE) clean -C user/
+
+cleanKernel:
+	$(MAKE) clean -C kernel/
+	
+clean: cleanKernel cleanUser
+
+user: cleanUser all
 
 run: all
 	$(QEMU) $(QEMUOPTSRUN)
 
 debug: all
 	qemu-system-i386 -machine q35 -debugcon stdio -s -S -m 256M -kernel kernel/kernel.bin & 
-	exec gdb kernel/kernel.bin -ex 'target remote :1234' -ex 'layout src'
-# exec gdb kernel/kernel.bin -ex 'target remote :1234' -ex 'b test13' -ex 'b preceiver' -ex 'b shm_release' -ex 'b shm_create' -ex 'b shm_acquire' -ex 'layout src'
-# exec gdb kernel/kernel.bin -ex 'target remote :1234'
+	
+	exec gdb kernel/kernel.bin -ex 'target remote :1234'

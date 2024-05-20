@@ -29,5 +29,6 @@ void defilement(void);
 
 void console_putbytes(const char *s, int len);
 
+void cons_write(const char *str, long size);
 
 #endif /* __ECRAN_H_INCLUDED__ */

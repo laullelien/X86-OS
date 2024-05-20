@@ -3,12 +3,17 @@
 
 #include "stdint.h"
 #include "queue.h"
+#include "user_alloc.h"
 
-#define NBPROC 30   // Nombre de processus max
+#define NBPROC 24 
+  // Nombre de processus max
 
 #define PROCESS_NAME_LEN 20
 
-#define MAX_SSIZE 4294967292
+#define MAX_SSIZE (1024*0x1000)
+// correspond à une page table complête
+
+#define KERNEL_STACK_SIZE 4096
 
 enum PROCESS_STATE {
     ACTIVE,
@@ -27,6 +32,7 @@ typedef struct _Process{
     enum PROCESS_STATE state;
     uint32_t context[5];
     uint32_t *stack;
+    uint32_t kernel_stack[2*KERNEL_STACK_SIZE];
     unsigned long stack_size;
     int priority;
 
@@ -38,19 +44,23 @@ typedef struct _Process{
     link brothers_listfield;
 
     int return_value;
+    int pipe_success;
     link listfield;
 
     link *queue_head;
+    PageDirectory page_directory;
 
 } Process;
 
-extern void ctx_sw(void *, void *);
+extern void cr3_sw(void *); // page directory
+extern void ctx_sw(void *, void *); // old, new
 
 Process * getprocess(int pid);
 
 void ordonnance();
 
-int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg);
+//int start(int (*pt_func)(void*), unsigned long ssize, int prio, const char *name, void *arg);
+int start(const char *name, unsigned long ssize, int prio, void *arg);
 
 int getpid(void);
 
@@ -64,5 +74,13 @@ int waitpid(int pid, int *retvalp);
 void wait_clock(unsigned long clock);
 
 void make_process_activable(Process *process);
+
+int idle(void *);
+int create_idle();
+
+void handle_user_pagefault();
+
+int check_user_pointer(const void *pointer);
+void sys_info(char *output);
 
 #endif /* __PROCESS_H_INCLUDED__ */

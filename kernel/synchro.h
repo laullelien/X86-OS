@@ -3,19 +3,18 @@
 
 #include "queue.h"
 
-#define NBQUEUE 8
+#define NBQUEUE 64
 
 typedef struct _Pipe
 {
     int fid;
 
     link conso;
-    int nb_conso;
     link prod;
-    int nb_prod;
 
     int *messages;
-    int deb, taille;
+    int deb;
+    int taille;
     int taille_max;
 
     link listfield;

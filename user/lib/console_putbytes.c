@@ -5,10 +5,10 @@
  * Stub for console_putbytes system call.
  */
 
+extern void cons_write(const char *s, int len);
+
 void console_putbytes(const char *s, int len) {
         
-        (void)s;
-        (void)len;
-        /** To be implemented */
+        cons_write(s, len);
 }
 

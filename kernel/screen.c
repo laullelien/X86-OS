@@ -4,6 +4,8 @@
 
 #include "screen.h"
 #include "cpu.h"
+#include "process.h"
+#include <stdio.h>
 
 uint16_t CURSOR_LINE = LINE_START;
 uint16_t CURSOR_COL = 0;
@@ -126,4 +128,9 @@ void console_putbytes(const char *s, int len){
     for (int i=0; i < len; i++){
         traite_car(s[i]);
     }
+}
+
+void cons_write(const char *str, long size) {
+    if (check_user_pointer(str)) {return;}
+    console_putbytes(str, (int)size);
 }
